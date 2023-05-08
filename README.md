@@ -1,1 +1,1 @@
-# gaia_deconvoluton
+# gaia_deconvolution
