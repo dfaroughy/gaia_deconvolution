@@ -92,7 +92,7 @@ if __name__ == '__main__':
     #...create working folders and save args
 
     args = params.parse_args()
-    args.workdir = make_dir('Gaia_deconv_MC_{}'.format(args.num_mc), sub_dirs=['data', 'results'])
+    args.workdir = make_dir('Gaia_deconv_MC_{}'.format(args.num_mc), sub_dirs=['data', 'results'], overwrite=True)
     print("#================================================")
     print("INFO: working directory: {}".format(args.workdir))
     print("#================================================")
@@ -106,27 +106,21 @@ if __name__ == '__main__':
     covs = args.scale_cov * torch.squeeze(torch.reshape( torch.tensor(np.load(covs_file)), (-1, 1, 6*6)))
     
     gaia = GaiaTransform(data, covs, args)
+    # plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim,  title=r'truth positions', save=args.workdir+'/data/truth_x.pdf')
+    # plot_data_projections(gaia.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim,  label=vlabel, title=r'truth velocities', save=args.workdir+'/data/truth_v.pdf')
     
-    plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim,  title=r'truth positions', save=args.workdir+'/data/truth_x.pdf')
-    plot_data_projections(gaia.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim,  label=vlabel, title=r'truth velocities', save=args.workdir+'/data/truth_v.pdf')
-    
-    #...smear data x7 times 
-
     gaia.smear()
-
-    #...get all stars within 3.5 kpc from sun 
-
     gaia.get_stars_near_sun()   
-
-    plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'smeared positions', save=args.workdir+'/data/smeared_x.pdf')
-    plot_data_projections(gaia.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'smeared velocities', save=args.workdir+'/data/smeared_v.pdf')
+    # plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'smeared positions', save=args.workdir+'/data/smeared_x.pdf')
+    # plot_data_projections(gaia.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'smeared velocities', save=args.workdir+'/data/smeared_v.pdf')
     
-    #...apply preprocessing of data from Sung paper
 
     gaia.preprocess()
-    
-    plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, title=r'preprocessed smeared positions', save=args.workdir + '/data/preproc_smeared_x_.pdf')    
-    plot_data_projections(gaia.v, bin_size=0.1, num_stars=args.num_gen, label=vlabel, title=r'preprocessed smeared velocities', save=args.workdir + '/data/preproc_smeared_v.pdf')                                  
+    # plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, title=r'preprocessed smeared positions', save=args.workdir + '/data/preproc_smeared_x_.pdf')    
+    # plot_data_projections(gaia.v, bin_size=0.1, num_stars=args.num_gen, label=vlabel, title=r'preprocessed smeared velocities', save=args.workdir + '/data/preproc_smeared_v.pdf')                                  
+
+
+    #...store parser args
 
     args.num_stars = gaia.num_stars
     print("INFO: num stars: {}".format(args.num_stars))
@@ -144,7 +138,7 @@ if __name__ == '__main__':
 
     #...define model
 
-    flow = maf(args)
+    flow = masked_autoregressive_flow(args)
 
     if args.pretrain:
 

@@ -40,31 +40,36 @@ class GaiaTransform:
     def num_stars(self):
         return self.data.shape[0]
 
-    def get_stars_near_sun(self, R=None):
+    def get_stars_near_sun(self, R=None, verbose=True):
         if not R: R=self.args.radius 
+        if verbose: print('INFO: fetching stars within radius {} kpc from sun'.format(R))
         distance = torch.norm(self.data[:, :3] - torch.tensor(self.args.x_sun), dim=-1)
         self.data = self.data[ distance < R] 
         return self
 
-    def smear(self):
+    def smear(self, verbose=True):
+        if verbose: print('INFO: smearing data')
         covs_matrix = torch.reshape(self.covs, (-1, 6, 6)) 
         noise_dist = torch.distributions.MultivariateNormal(torch.zeros(self.num_stars, 6), covs_matrix)
         noise = noise_dist.sample()
         self.data[:,:6] = self.data[:,:6] + noise 
         return self
 
-    def to_unit_ball(self, R, x0, inverse=False): 
+    def to_unit_ball(self, inverse=False, verbose=True): 
+        
+        x0 = torch.tensor(self.args.x_sun)
+        dist = torch.norm(self.data[:,:3] - x0, dim=-1)
+        R = torch.max(dist) * (1+1e-6)
 
-        distances = torch.norm(self.data[:,:3] - x0, dim=1)
-        R = torch.max(distances)
-
+        if verbose: print('INFO: centering and scaling to unit ball at origin, scale={}'.format(R))
         if inverse: 
             self.data[:,:3] = (self.x * R ) + x0 
         else:  
             self.data[:,:3] = (self.x - x0) / R
         return self
 
-    def radial_blowup_transform(self, inverse=False):
+    def radial_blowup_transform(self, inverse=False, verbose=True):
+        if verbose: print('INFO: transform hard edge of data to infinity')
         x_norm = torch.linalg.norm(self.x, dim=-1, keepdims=True)
         if inverse: 
             self.data[:,:3] = (self.x / x_norm) * torch.tanh(x_norm)
@@ -72,8 +77,8 @@ class GaiaTransform:
             self.data[:,:3] =  (self.x / x_norm)  * torch.atanh(x_norm)
         return self
 
-    def standardization(self, inverse=False): 
-
+    def standardization(self, inverse=False, verbose=True):
+        if verbose: print('INFO: standardizing data') 
         if inverse: 
             self.data[:,:3] = self.x * self.std[:3] + self.mean[:3]
             self.data[:,3:6] = self.v * self.std[3:] + self.mean[3:]
@@ -84,21 +89,16 @@ class GaiaTransform:
             self.std[3:] = torch.std(self.data[:,3:6], dim=0)
             self.data[:,:3] = (self.x - self.mean[:3]) / self.std[:3]
             self.data[:,3:6] = (self.v - self.mean[3:]) / self.std[3:]
-
         return self 
 
-    def preprocess(self, revert=False):  
-
-        R = self.args.radius * (1+1e-6)
-        x0 = torch.tensor(self.args.x_sun)
-
+    def preprocess(self, revert=False, verbose=True):  
+        if verbose: print('INFO: preprocessing data')
         if revert: 
-            self.standardization(inverse=True)
-            self.radial_blowup_transform(inverse=True)
-            self.to_unit_ball(R=R, x0=x0, inverse=True)
+            self.standardization(inverse=True, verbose=False)
+            self.radial_blowup_transform(inverse=True, verbose=False)
+            self.to_unit_ball(inverse=True, verbose=False)
         else: 
-            self.to_unit_ball(R=R, x0=x0)
-            self.radial_blowup_transform()
-            self.standardization()
-
+            self.to_unit_ball(verbose=False)
+            self.radial_blowup_transform( verbose=False)
+            self.standardization( verbose=False)
         return self 

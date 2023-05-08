@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from tqdm import tqdm
 from copy import deepcopy
 from gaia_deconvolution.models.loss import calculate_loss
 from gaia_deconvolution.data.plots import plot_data_projections, plot_loss
