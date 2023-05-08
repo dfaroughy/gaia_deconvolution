@@ -1,0 +1,13 @@
+torch
+nflows
+astropy
+pygaia
+numpy
+scipy
+pandas
+tqdm
+matplotlib
+seaborn
+jupyter[notebook]
+scikit-learn
+argparse
