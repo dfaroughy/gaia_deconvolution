@@ -1,0 +1,7 @@
+README.md
+setup.py
+source/gaia_deconvolution.egg-info/PKG-INFO
+source/gaia_deconvolution.egg-info/SOURCES.txt
+source/gaia_deconvolution.egg-info/dependency_links.txt
+source/gaia_deconvolution.egg-info/requires.txt
+source/gaia_deconvolution.egg-info/top_level.txt

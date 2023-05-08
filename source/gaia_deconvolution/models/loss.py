@@ -3,8 +3,6 @@ import torch
 import torch.nn as nn
 import numpy as np
 from copy import deepcopy
-from utils import *
-
 
 def calculate_loss(model, data, args, loss_func=None, reduction=torch.mean):
 	if not loss_func: loss_func = args.loss

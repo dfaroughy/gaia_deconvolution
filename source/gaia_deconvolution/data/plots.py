@@ -8,54 +8,6 @@ from scipy import stats
 
 sns.set_theme(style="dark")
 
-# def plot_data_projections(sample, 
-#                           title, 
-#                           save, 
-#                           num_stars=20000, 
-#                           bin_size=None,
-#                           xlim=[(-5, 5), (-5, 5), (-5, 5)], 
-#                           ylim=[(-5, 5), (-5, 5), (-5, 5)], 
-#                           figsize=(15, 5),
-#                           cmap="magma"):
-
-#     print("INFO: plotting -> {}".format(title))
-    
-#     # Extract x, y, and z coordinates
-#     x = sample[:num_stars, 0].numpy()
-#     y = sample[:num_stars, 1].numpy()
-#     z = sample[:num_stars, 2].numpy()
-
-#     # Create a list of tuples for each projection
-#     projections = [((x, y), "x", "y"), ((x, z), "x", "z"), ((y, z), "y", "z")]
-
-#     fig, axes = plt.subplots(1, 3, figsize=figsize)
-
-#     for idx, ((data_x, data_y), xlabel, ylabel) in enumerate(projections):
-
-#         if bin_size:
-#             bin_edges_x = np.linspace(xlim[idx][0], xlim[idx][1], int((xlim[idx][1] - xlim[idx][0]) / bin_size) + 1)
-#             bin_edges_y = np.linspace(ylim[idx][0], ylim[idx][1], int((ylim[idx][1] - ylim[idx][0]) / bin_size) + 1)
-#             bins=(bin_edges_x, bin_edges_y)
-#         else: 
-#             bins=100
-
-#         sns.kdeplot(x=data_x, y=data_y, levels=6, color="w", linewidths=1, ax=axes[idx])
-#         sns.scatterplot(x=data_x, y=data_y, s=5, color=".15", ax=axes[idx])
-#         sns.histplot(x=data_x, y=data_y, bins=bins, cmap=cmap, ax=axes[idx])
-
-#         axes[idx].set_xlim(xlim[idx])
-#         axes[idx].set_ylim(ylim[idx])
-#         axes[idx].set_xlabel(xlabel)
-#         axes[idx].set_ylabel(ylabel)
-#         axes[idx].set_title(f"{xlabel} - {ylabel}")
-#         plt.grid() 
-
-#     fig.suptitle(title)
-#     fig.tight_layout()
-#     plt.savefig(save)
-
-
-
 def plot_data_projections(sample, 
                           title, 
                           save, 
@@ -112,33 +64,6 @@ def plot_data_projections(sample,
     fig.tight_layout()
     plt.savefig(save)
 
-
-
-
-
-
-
-def plot_data(sample, title, save, num_stars=20000, xlim=[-5, 5], ylim=[-5, 5], figsize=(5, 5)):
-
-    # sample = sample.cpu().detach()
-    x = sample[:num_stars, 0].numpy()
-    y = sample[:num_stars, 1].numpy()
-    kde = stats.gaussian_kde(np.vstack([x, y]))
-    xx, yy = np.mgrid[xlim[0]:xlim[1]:100j, ylim[0]:ylim[1]:100j]
-    positions = np.vstack([xx.ravel(), yy.ravel()])
-    z = np.reshape(kde(positions).T, xx.shape)
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    sns.kdeplot(x=x, y=y, levels=6, color="w", linewidths=1, ax=ax)
-    sns.scatterplot(x=x, y=y, s=5, color=".15")
-    sns.histplot(x=x, y=y, bins=50, cmap="mako")
-
-    ax.set_xlim(xlim)
-    ax.set_ylim(ylim)
-    ax.set_title(title)
-    fig.tight_layout()
-    plt.grid()  
-    plt.savefig(save)
 
 
 def plot_loss(train, valid, args):

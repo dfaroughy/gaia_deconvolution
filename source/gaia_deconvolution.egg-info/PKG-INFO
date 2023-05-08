@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: gaia-deconvolution
+Version: 1.0
+Home-page: git@github.com:dfaroughy/gaia_deconvolution.git
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+
+# gaia_deconvolution

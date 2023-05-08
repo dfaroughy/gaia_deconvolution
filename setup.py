@@ -22,8 +22,8 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="git@github.com:dfaroughy/gaia_deconvolution.git",
-    packages=setuptools.find_packages("src"),
-    package_dir={"": "src"},
+    packages=setuptools.find_packages("source"),
+    package_dir={"": "source"},
     python_requires=">=3.7",
     install_requires=load_requirements(),
     include_package_data=True

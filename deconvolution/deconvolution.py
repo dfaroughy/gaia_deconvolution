@@ -100,8 +100,8 @@ if __name__ == '__main__':
 
     #...get datasets
 
-    data_file =  "./gaia_deconvolution/data/data.angle_340.smeared_00.npy"
-    covs_file=  "./gaia_deconvolution/data/data.angle_340.smeared_00.cov.npy"
+    data_file =  "./data/data.angle_340.smeared_00.npy"
+    covs_file=  "./data/data.angle_340.smeared_00.cov.npy"
     data = torch.tensor(np.load(data_file))
     covs = args.scale_cov * torch.squeeze(torch.reshape( torch.tensor(np.load(covs_file)), (-1, 1, 6*6)))
     
