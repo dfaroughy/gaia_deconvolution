@@ -34,7 +34,7 @@ params.add_argument('--pretrain',     default=True,             help='if True, p
 
 params.add_argument('--flow_dim',     default=6,            help='dimensionalaty of input features for flow, usually same as --dim', type=int)
 params.add_argument('--flow_type',    default='MAF',        help='type of flow model: coupling or MAF', type=str)
-params.add_argument('--flow_func',    default='RQSpline',   help='type of flow transformation: affine or RQSpline', type=str)
+params.add_argument('--flow_func',    default='affine',   help='type of flow transformation: affine or RQSpline', type=str)
 params.add_argument('--coupl_mask',   default='checkers',   help='mask type [only for coupling flows]: mid-split or checkers', type=str)
 params.add_argument('--permutation',  default='inverse',    help='type of fixed permutation between flows: n-cycle or inverse', type=str)
 params.add_argument('--num_flows',    default=5,            help='num of flow layers', type=int)
@@ -46,7 +46,7 @@ params.add_argument('--context_dim',  default=None,         help='dimension of c
 #...training params:
 
 params.add_argument('--lr',           default=1e-4,           help='learning rate of generator optimizer', type=float)
-params.add_argument('--batch_size',   default=512,            help='size of training/testing batch', type=int)
+params.add_argument('--batch_size',   default=300,            help='size of training/testing batch', type=int)
 params.add_argument('--batch_steps',  default=0,              help='set the number of sub-batch steps for gradient accumulation', type=int)
 params.add_argument('--test_size',    default=0.2,            help='fraction of testing data', type=float)
 params.add_argument('--activation',   default=F.leaky_relu,   help='activation function for neuarl networks')
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     #...create working folders and save args
 
     args = params.parse_args()
-    args.workdir = make_dir('Gaia_deconv_MC_{}'.format(args.num_mc), sub_dirs=['data', 'results'], overwrite=False)
+    args.workdir = make_dir('Results_gaia_decon', sub_dirs=['data_plots', 'result_plots'], overwrite=False)
     print("#================================================")
     print("INFO: working directory: {}".format(args.workdir))
     print("#================================================")
@@ -107,17 +107,16 @@ if __name__ == '__main__':
     
     gaia = GaiaTransform(data, covs, args)
     gaia.get_stars_near_sun()   
-    plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim,  title=r'truth positions', save=args.workdir+'/data/truth_x.png')
-    plot_data_projections(gaia.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim,  label=vlabel, title=r'truth velocities', save=args.workdir+'/data/truth_v.png')    
+    # plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim,  title=r'truth positions', save=args.workdir+'/data_plots/truth_x.png')
+    # plot_data_projections(gaia.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim,  label=vlabel, title=r'truth velocities', save=args.workdir+'/data_plots/truth_v.png')    
 
     gaia.smear()
-    plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'smeared positions', save=args.workdir+'/data/smeared_x.png')
-    plot_data_projections(gaia.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'smeared velocities', save=args.workdir+'/data/smeared_v.png')
+    # plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'smeared positions', save=args.workdir+'/data_plots/smeared_x.png')
+    # plot_data_projections(gaia.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'smeared velocities', save=args.workdir+'/data_plots/smeared_v.png')
     
-
     gaia.preprocess()
-    plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, title=r'preprocessed smeared positions', save=args.workdir + '/data/preproc_smeared_x_.png')    
-    plot_data_projections(gaia.v, bin_size=0.1, num_stars=args.num_gen, label=vlabel, title=r'preprocessed smeared velocities', save=args.workdir + '/data/preproc_smeared_v.png')                                  
+    # plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, title=r'preprocessed smeared positions', save=args.workdir + '/data_plots/preproc_smeared_x_.png')    
+    # plot_data_projections(gaia.v, bin_size=0.1, num_stars=args.num_gen, label=vlabel, title=r'preprocessed smeared velocities', save=args.workdir + '/data_plots/preproc_smeared_v.png')                                  
 
 
     #...store parser args
@@ -155,8 +154,8 @@ if __name__ == '__main__':
         gaia_sample.mean = gaia.mean
         gaia_sample.std =  gaia.std
         gaia_sample.preprocess(R=gaia.R, revert=True)
-        plot_data_projections(gaia_sample.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'pretrained noisy positions', save=args.workdir + '/results/pretrained_x_model.png')    
-        plot_data_projections(gaia_sample.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'pretrained noisy velocities', save=args.workdir + '/results/pretrained_v_model.png')                                  
+        plot_data_projections(gaia_sample.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'pretrained noisy positions', save=args.workdir + '/result_plots/pretrained_x_model.png')    
+        plot_data_projections(gaia_sample.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'pretrained noisy velocities', save=args.workdir + '/result_plots/pretrained_v_model.png')                                  
 
     #...deconvolution
 
@@ -166,7 +165,7 @@ if __name__ == '__main__':
     gaia_sample_deconv.mean = gaia.mean
     gaia_sample_deconv.std =  gaia.std
     gaia_sample_deconv.preprocess(R=gaia.R, revert=True)
-    plot_data_projections(gaia_sample_deconv.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'deconvoluted noisy positions', save=args.workdir + '/results/best_x_model.png')    
-    plot_data_projections(gaia_sample_deconv.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'deconvoluted noisy velocities', save=args.workdir + '/results/best_v_model.png')                                  
+    plot_data_projections(gaia_sample_deconv.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'deconvoluted noisy positions', save=args.workdir + '/result_plots/best_x_model.png')    
+    plot_data_projections(gaia_sample_deconv.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'deconvoluted noisy velocities', save=args.workdir + '/result_plots/best_v_model.png')                                  
 
 

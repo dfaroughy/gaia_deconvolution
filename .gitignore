@@ -1,4 +1,9 @@
 
 ._*
 .DS_store
+main/.DS_store
 __pycache__
+source/gaia_deconvolution/models/__pycache__
+Gaia_deconv_MC_100__*
+Results_Gaia_Deconvolution*
+
