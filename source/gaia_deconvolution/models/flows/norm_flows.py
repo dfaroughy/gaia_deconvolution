@@ -48,12 +48,12 @@ def masked_autoregressive_flow(args,
         perm = nflows.transforms.permutations.Permutation(permutation_layer(args))    
         list_transforms.append(flow)
         list_transforms.append(perm)
-    transform = nflows.transforms.base.CompositeTransform(list_transforms).to(args.device) 
+    transform = nflows.transforms.base.CompositeTransform(list_transforms)
     base_dist = nflows.distributions.normal.StandardNormal(shape=[dim])
-    model = nflows.flows.base.Flow(transform, base_dist).to(args.device)
+    model = nflows.flows.base.Flow(transform, base_dist)
     if save_architecture:
         with open(args.workdir+'/model_architecture.txt', 'w') as file: file.write('model = {}\n'.format(model))
-    return model
+    return model.to(args.device)
 
 
 def coupling_flow(args,
@@ -93,11 +93,11 @@ def coupling_flow(args,
         perm = nflows.transforms.permutations.Permutation(permutation_layer(args))
         list_transforms.append(flow)
         list_transforms.append(perm)
-    transform = nflows.transforms.base.CompositeTransform(list_transforms).to(args.device) 
+    transform = nflows.transforms.base.CompositeTransform(list_transforms)
     base_dist = nflows.distributions.normal.StandardNormal(shape=[dim])
-    model = nflows.flows.base.Flow(transform, base_dist).to(args.device)
+    model = nflows.flows.base.Flow(transform, base_dist)
     
     if save_architecture:
         with open(args.workdir+'/model_architecture.txt', 'w') as file: file.write('model = {}\n'.format(model))
    
-    return model
+    return model.to(args.device)

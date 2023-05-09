@@ -50,19 +50,27 @@ class Train_Epoch(nn.Module):
         self.args = args
 
     def fit(self, data, optimizer):
+        
         self.model.train()
         self.loss = 0
+
         for batch in tqdm(data, desc="batch"):
-            if self.args.batch_steps <= 1: 
+
+            if self.args.sub_batch_size <= 1: 
+
+                batch.to(self.args.device)
                 current_loss = calculate_loss(self.model, batch, self.args)
                 current_loss.backward()
                 optimizer.step()  
                 optimizer.zero_grad()
-                self.loss += current_loss.item() / len(data) 
-            else: # sub-batch and accumulate gradient (use if data does not fit in GPU memory)  
-                sub_batches = torch.tensor_split(batch, batch.shape[0] // self.args.batch_steps)
+                self.loss += current_loss.item() / len(data)
+
+            else: 
+                # sub-batch and accumulate gradient (use if data does not fit in GPU memory)  
+                sub_batches = torch.tensor_split(batch, batch.shape[0] // self.args.sub_batch_size)
                 sub_batch_loss = 0
                 for sub_batch in sub_batches:
+                    sub_batch.to(self.args.device)
                     current_loss = calculate_loss(self.model, sub_batch, self.args, reduction=torch.sum)
                     current_loss.backward()
                     sub_batch_loss += current_loss.item() / self.args.batch_size
@@ -91,11 +99,14 @@ class Evaluate_Epoch(nn.Module):
         self.loss = 0
         self.epoch += 1
         for batch in data:
-            if self.args.batch_steps <= 1:   
+
+            batch.to(args.device)
+
+            if self.args.sub_batch_size <= 1:   
                 current_loss = calculate_loss(self.model, batch, self.args)
                 self.loss += current_loss.item() / len(data)
             else:
-                sub_batches = torch.tensor_split(batch, batch.shape[0] // self.args.batch_steps)
+                sub_batches = torch.tensor_split(batch, batch.shape[0] // self.args.sub_batch_size)
                 sub_batch_loss = 0
                 for sub_batch in sub_batches:
                     current_loss = calculate_loss(self.model, sub_batch, self.args, reduction=torch.sum) 
