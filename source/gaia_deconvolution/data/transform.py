@@ -19,23 +19,20 @@ class GaiaTransform:
         self.data = torch.cat((data, covs), dim=1)
         self.mean = torch.zeros(6)
         self.std = torch.zeros(6)
+        self.R = None
 
     @property
     def x(self):
         return self.data[:, :3]
-
     @property
     def v(self):
         return self.data[:, 3:6]
-
     @property
     def xv(self):
         return self.data[:, :6]
-
     @property
     def covs(self):
         return self.data[:,6:]
-
     @property
     def num_stars(self):
         return self.data.shape[0]
@@ -55,17 +52,18 @@ class GaiaTransform:
         self.data[:,:6] = self.data[:,:6] + noise 
         return self
 
-    def to_unit_ball(self, inverse=False, verbose=True): 
-        
+    def to_unit_ball(self, R=None, inverse=False, verbose=True): 
         x0 = torch.tensor(self.args.x_sun)
-        dist = torch.norm(self.data[:,:3] - x0, dim=-1)
-        R = torch.max(dist) * (1+1e-6)
-
+        if R:
+            self.R = R
+        else:
+            dist = torch.norm(self.data[:,:3] - x0, dim=-1)
+            self.R = torch.max(dist) * (1+1e-6)
         if verbose: print('INFO: centering and scaling to unit ball at origin, scale={}'.format(R))
         if inverse: 
-            self.data[:,:3] = (self.x * R ) + x0 
+            self.data[:,:3] = (self.x * self.R ) + x0 
         else:  
-            self.data[:,:3] = (self.x - x0) / R
+            self.data[:,:3] = (self.x - x0) / self.R
         return self
 
     def radial_blowup_transform(self, inverse=False, verbose=True):
@@ -91,14 +89,21 @@ class GaiaTransform:
             self.data[:,3:6] = (self.v - self.mean[3:]) / self.std[3:]
         return self 
 
-    def preprocess(self, revert=False, verbose=True):  
+    def preprocess(self, R=None, revert=False, verbose=True):  
         if verbose: print('INFO: preprocessing data')
+        x0 = torch.tensor(self.args.x_sun)
+        if R:
+            self.R = R
+        else:
+            dist = torch.norm(self.data[:,:3] - x0, dim=-1)
+            self.R = torch.max(dist) * (1+1e-6)
+
         if revert: 
             self.standardization(inverse=True, verbose=False)
             self.radial_blowup_transform(inverse=True, verbose=False)
-            self.to_unit_ball(inverse=True, verbose=False)
+            self.to_unit_ball(R=R, inverse=True, verbose=False)
         else: 
-            self.to_unit_ball(verbose=False)
+            self.to_unit_ball(R=R, verbose=False)
             self.radial_blowup_transform( verbose=False)
-            self.standardization( verbose=False)
+            self.standardization(verbose=False)
         return self 

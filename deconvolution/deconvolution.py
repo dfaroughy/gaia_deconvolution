@@ -50,7 +50,7 @@ params.add_argument('--batch_size',   default=512,            help='size of trai
 params.add_argument('--batch_steps',  default=0,              help='set the number of sub-batch steps for gradient accumulation', type=int)
 params.add_argument('--test_size',    default=0.2,            help='fraction of testing data', type=float)
 params.add_argument('--activation',   default=F.leaky_relu,   help='activation function for neuarl networks')
-params.add_argument('--max_epochs',   default=200,            help='max num of training epochs', type=int)
+params.add_argument('--max_epochs',   default=3,            help='max num of training epochs', type=int)
 params.add_argument('--max_patience', default=20,             help='terminate if test loss is not changing', type=int)
 params.add_argument('--batch_norm',   default=True,           help='apply batch normalization layer to flow blocks', type=bool)
 params.add_argument('--dropout',      default=0.1,           help='dropout probability', type=float)
@@ -64,7 +64,7 @@ params.add_argument('--x_sun',      default=[8.122,
 params.add_argument('--radius',     default=3.5,           help='only keep stars within radius [kpc] of sun', type=float)
 params.add_argument('--num_stars',  default=None,          help='total number of stars used for train/testing', type=float)
 params.add_argument('--num_gen',    default=50000,         help='number of sampled stars from model', type=int)
-params.add_argument('--scale_cov',  default=3.0,          help='rescales the covariance matrix of Gaia noise data', type=float)
+params.add_argument('--scale_cov',  default=1.0,          help='rescales the covariance matrix of Gaia noise data', type=float)
 
 #... plot params:
 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     #...create working folders and save args
 
     args = params.parse_args()
-    args.workdir = make_dir('Gaia_deconv_MC_{}'.format(args.num_mc), sub_dirs=['data', 'results'], overwrite=True)
+    args.workdir = make_dir('Gaia_deconv_MC_{}'.format(args.num_mc), sub_dirs=['data', 'results'], overwrite=False)
     print("#================================================")
     print("INFO: working directory: {}".format(args.workdir))
     print("#================================================")
@@ -106,11 +106,11 @@ if __name__ == '__main__':
     covs = args.scale_cov * torch.squeeze(torch.reshape( torch.tensor(np.load(covs_file)), (-1, 1, 6*6)))
     
     gaia = GaiaTransform(data, covs, args)
-    # plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim,  title=r'truth positions', save=args.workdir+'/data/truth_x.pdf')
-    # plot_data_projections(gaia.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim,  label=vlabel, title=r'truth velocities', save=args.workdir+'/data/truth_v.pdf')
-    
-    gaia.smear()
     gaia.get_stars_near_sun()   
+    # plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim,  title=r'truth positions', save=args.workdir+'/data/truth_x.pdf')
+    # plot_data_projections(gaia.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim,  label=vlabel, title=r'truth velocities', save=args.workdir+'/data/truth_v.pdf')    
+
+    gaia.smear()
     # plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'smeared positions', save=args.workdir+'/data/smeared_x.pdf')
     # plot_data_projections(gaia.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'smeared velocities', save=args.workdir+'/data/smeared_v.pdf')
     
@@ -154,7 +154,7 @@ if __name__ == '__main__':
         gaia_sample = GaiaTransform(sample, torch.zeros(sample.shape), args) 
         gaia_sample.mean = gaia.mean
         gaia_sample.std =  gaia.std
-        gaia_sample.preprocess(revert=True)
+        gaia_sample.preprocess(R=gaia.R, revert=True)
         plot_data_projections(gaia_sample.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'pretrained noisy positions', save=args.workdir + '/results/pretrained_x_model.pdf')    
         plot_data_projections(gaia_sample.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'pretrained noisy velocities', save=args.workdir + '/results/pretrained_v_model.pdf')                                  
 
@@ -165,7 +165,7 @@ if __name__ == '__main__':
     gaia_sample_deconv = GaiaTransform(sample, torch.zeros(sample.shape), args) 
     gaia_sample_deconv.mean = gaia.mean
     gaia_sample_deconv.std =  gaia.std
-    gaia_sample_deconv.preprocess(revert=True)
+    gaia_sample_deconv.preprocess(R=gaia.R, revert=True)
     plot_data_projections(gaia_sample_deconv.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'deconvoluted noisy positions', save=args.workdir + '/results/best_x_model.pdf')    
     plot_data_projections(gaia_sample_deconv.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'deconvoluted noisy velocities', save=args.workdir + '/results/best_v_model.pdf')                                  
 
