@@ -20,7 +20,7 @@
     "batch_steps": 0,
     "test_size": 0.2,
     "activation": "leaky_relu",
-    "max_epochs": 3,
+    "max_epochs": 300,
     "max_patience": 20,
     "batch_norm": true,
     "dropout": 0.1,
