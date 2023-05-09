@@ -13,15 +13,21 @@ def Train_Model(model, training_sample, validation_sample, args, show_plots=True
     test = Evaluate_Epoch(model, args)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)  
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.max_epochs)
+    
     print('INFO: number of training parameters: {}'.format(sum(p.numel() for p in model.parameters())))
+    
     for epoch in tqdm(range(args.max_epochs), desc="epochs"):
+       
         train.fit(training_sample, optimizer)       
         test.validate(validation_sample)
         scheduler.step() 
+       
         print("\t Epoch: {}".format(epoch))
         print("\t Training loss: {}".format(train.loss))
         print("\t Test loss: {}  (min: {})".format(test.loss, test.loss_min))
+       
         if test.check_patience(show_plots=show_plots, save_best_state=save_best_state): break
+   
     plot_loss(train, test, args)
     torch.cuda.empty_cache()
     return test.best_model
@@ -56,9 +62,7 @@ class Train_Epoch(nn.Module):
 
         for batch in tqdm(data, desc="batch"):
 
-            if self.args.sub_batch_size <= 1: 
-
-                batch.to(self.args.device)
+            if self.args.num_steps <= 1: 
                 current_loss = calculate_loss(self.model, batch, self.args)
                 current_loss.backward()
                 optimizer.step()  
@@ -66,17 +70,19 @@ class Train_Epoch(nn.Module):
                 self.loss += current_loss.item() / len(data)
 
             else: 
+
                 # sub-batch and accumulate gradient (use if data does not fit in GPU memory)  
-                sub_batches = torch.tensor_split(batch, batch.shape[0] // self.args.sub_batch_size)
+
+                sub_batches = torch.tensor_split(batch, self.args.num_steps)
                 sub_batch_loss = 0
                 for sub_batch in sub_batches:
-                    sub_batch.to(self.args.device)
                     current_loss = calculate_loss(self.model, sub_batch, self.args, reduction=torch.sum)
                     current_loss.backward()
                     sub_batch_loss += current_loss.item() / self.args.batch_size
                 optimizer.step()
                 optimizer.zero_grad()
                 self.loss += sub_batch_loss / len(data) 
+
         self.loss_per_epoch.append(self.loss)
 
 
@@ -100,13 +106,11 @@ class Evaluate_Epoch(nn.Module):
         self.epoch += 1
         for batch in data:
 
-            batch.to(args.device)
-
-            if self.args.sub_batch_size <= 1:   
+            if self.args.num_steps <= 1: 
                 current_loss = calculate_loss(self.model, batch, self.args)
                 self.loss += current_loss.item() / len(data)
             else:
-                sub_batches = torch.tensor_split(batch, batch.shape[0] // self.args.sub_batch_size)
+                sub_batches = torch.tensor_split(batch, self.args.num_steps)
                 sub_batch_loss = 0
                 for sub_batch in sub_batches:
                     current_loss = calculate_loss(self.model, sub_batch, self.args, reduction=torch.sum) 

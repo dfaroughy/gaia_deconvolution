@@ -11,8 +11,9 @@ def calculate_loss(model, data, args, loss_func=None, reduction=torch.mean):
 	return loss
 
 def neglogprob_loss(model, batch, args):
-	d = args.dim
-	loss = - model.log_prob(batch[:, :d])
+	batch = batch[:, :args.dim]
+	batch = batch.to(args.device)
+	loss = - model.log_prob(batch)
 	return loss
 
 def deconv_loss(model, batch, args):
@@ -22,11 +23,13 @@ def deconv_loss(model, batch, args):
 	x = batch[:, :d]										# x = (x1, x2)
 	cov_flat = batch[:, d:] 								# cov = (c11, c12, c21, c22)  flat
 	cov_matrix = torch.reshape(cov_flat, (-1, d, d))        # cov = ((c11, c12),(c21, c22))  reshaped
-	eps = torch.randn_like(x)                                         # sample eps ~ N(0,1) 
+	eps = torch.randn_like(x)                               # sample eps ~ N(0,1) 
 	eps = torch.reshape(eps,(-1, d, 1))                     # reshapes eps dim(2) -> 2x1 vector 
-	x_noisy = x + torch.squeeze(torch.bmm(cov_matrix, eps))            # x + sigma * eps
+	x_noisy = x + torch.squeeze(torch.bmm(cov_matrix, eps)) # x + sigma * eps
+	x_noisy = x_noisy.to(args.device)									
 	loss = - torch.logsumexp(torch.reshape(model.log_prob(x_noisy),(-1, n)),dim=-1) 
 	loss +=  torch.log(torch.tensor(1.0 if not n else n))
+
 	return loss
 
 # def deconv_loss(model, batch, args):

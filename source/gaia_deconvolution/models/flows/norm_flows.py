@@ -53,7 +53,7 @@ def masked_autoregressive_flow(args,
     model = nflows.flows.base.Flow(transform, base_dist)
     if save_architecture:
         with open(args.workdir+'/model_architecture.txt', 'w') as file: file.write('model = {}\n'.format(model))
-    return model.to(args.device)
+    return model
 
 
 def coupling_flow(args,
@@ -100,4 +100,4 @@ def coupling_flow(args,
     if save_architecture:
         with open(args.workdir+'/model_architecture.txt', 'w') as file: file.write('model = {}\n'.format(model))
    
-    return model.to(args.device)
+    return model
