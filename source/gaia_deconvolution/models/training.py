@@ -14,7 +14,7 @@ def Train_Model(model, training_sample, validation_sample, args, show_plots=True
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)  
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.max_epochs)
     print('INFO: number of training parameters: {}'.format(sum(p.numel() for p in model.parameters())))
-    for epoch in tqdm(range(args.max_epochs), desc="epochs")
+    for epoch in tqdm(range(args.max_epochs), desc="epochs"):
         train.fit(training_sample, optimizer)       
         test.validate(validation_sample)
         scheduler.step() 

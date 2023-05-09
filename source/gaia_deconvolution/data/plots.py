@@ -45,7 +45,7 @@ def plot_data_projections(sample,
         axes[0, idx].set_xlim(xlim[idx])
         axes[0, idx].set_xlabel(xlabel)
         axes[0, idx].set_ylabel('counts')
-        axes[0, idx].set_title(f"{xlabel}")
+        # axes[0, idx].set_title(f"{xlabel}")
         axes[0, idx].grid()
 
 

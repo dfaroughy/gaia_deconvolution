@@ -62,7 +62,7 @@ def coupling_flow(args,
             save_architecture=True):
 
     def resnet(in_features, out_features):
-        return flows.nn.nets.ResidualNet(
+        return nflows.nn.nets.ResidualNet(
                                     in_features, out_features,
                                     context_features=args.context_dim,
                                     hidden_features=args.hidden_dims,

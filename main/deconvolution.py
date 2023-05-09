@@ -24,7 +24,7 @@ torch.set_default_dtype(torch.float64)
 params = argparse.ArgumentParser(description='arguments for the deconvolution model')
 
 params.add_argument('--workdir',      help='working directory', type=str)
-params.add_argument('--device',       default='cuda:1',         help='where to train')
+params.add_argument('--device',       default='cuda:2',         help='where to train')
 params.add_argument('--dim',          default=6,                help='dimensionalaty of data: (x,y,x,vx,vy,vz)', type=int)
 params.add_argument('--num_mc',       default=100,              help='number of MC samples for integration', type=int)
 params.add_argument('--loss',         default=deconv_loss,      help='loss function')
@@ -33,9 +33,9 @@ params.add_argument('--pretrain',     default=True,             help='if True, p
 #...flow params:
 
 params.add_argument('--flow_dim',     default=6,            help='dimensionalaty of input features for flow, usually same as --dim', type=int)
-params.add_argument('--flow_type',    default='MAF',        help='type of flow model: coupling or MAF', type=str)
-params.add_argument('--flow_func',    default='affine',   help='type of flow transformation: affine or RQSpline', type=str)
-params.add_argument('--coupl_mask',   default='checkers',   help='mask type [only for coupling flows]: mid-split or checkers', type=str)
+params.add_argument('--flow_type',    default='coupling',        help='type of flow model: coupling or MAF', type=str)
+params.add_argument('--flow_func',    default='RQSpline',   help='type of flow transformation: affine or RQSpline', type=str)
+params.add_argument('--coupl_mask',   default='mid-split',   help='mask type [only for coupling flows]: mid-split or checkers', type=str)
 params.add_argument('--permutation',  default='inverse',    help='type of fixed permutation between flows: n-cycle or inverse', type=str)
 params.add_argument('--num_flows',    default=5,            help='num of flow layers', type=int)
 params.add_argument('--hidden_dims',  default=128,           help='dimension of hidden layers', type=int)
@@ -45,11 +45,11 @@ params.add_argument('--context_dim',  default=None,         help='dimension of c
 
 #...training params:
 
-params.add_argument('--lr',           default=1e-4,           help='learning rate of generator optimizer', type=float)
+params.add_argument('--lr',           default=1e-3,           help='learning rate of generator optimizer', type=float)
 params.add_argument('--batch_size',   default=300,            help='size of training/testing batch', type=int)
 params.add_argument('--batch_steps',  default=0,              help='set the number of sub-batch steps for gradient accumulation', type=int)
 params.add_argument('--test_size',    default=0.2,            help='fraction of testing data', type=float)
-params.add_argument('--activation',   default=F.leaky_relu,   help='activation function for neuarl networks')
+params.add_argument('--activation',   default=F.leaky_relu,   help='activation function for neural networks')
 params.add_argument('--max_epochs',   default=300,            help='max num of training epochs', type=int)
 params.add_argument('--max_patience', default=20,             help='terminate if test loss is not changing', type=int)
 params.add_argument('--batch_norm',   default=True,           help='apply batch normalization layer to flow blocks', type=bool)
@@ -92,13 +92,13 @@ if __name__ == '__main__':
     #...create working folders and save args
 
     args = params.parse_args()
-    args.workdir = make_dir('Results_gaia_decon', sub_dirs=['data_plots', 'result_plots'], overwrite=False)
+    args.workdir = make_dir('Results_Gaia_Deconvolution', sub_dirs=['data_plots', 'result_plots'], overwrite=False)
     print("#================================================")
     print("INFO: working directory: {}".format(args.workdir))
     print("#================================================")
 
 
-    #...get datasets
+    #...get datasets, smear, preprocess
 
     data_file =  "./data/data.angle_340.smeared_00.npy"
     covs_file=  "./data/data.angle_340.smeared_00.cov.npy"
@@ -118,7 +118,6 @@ if __name__ == '__main__':
     # plot_data_projections(gaia.x, bin_size=0.1, num_stars=args.num_gen, title=r'preprocessed smeared positions', save=args.workdir + '/data_plots/preproc_smeared_x_.png')    
     # plot_data_projections(gaia.v, bin_size=0.1, num_stars=args.num_gen, label=vlabel, title=r'preprocessed smeared velocities', save=args.workdir + '/data_plots/preproc_smeared_v.png')                                  
 
-
     #...store parser args
 
     args.num_stars = gaia.num_stars
@@ -127,17 +126,14 @@ if __name__ == '__main__':
 
     #...Prepare train/test samples
 
-    train, test = train_test_split(gaia.data, test_size=args.test_size, random_state=12385)
-    train_sample = DataLoader(dataset=torch.Tensor(train).to(args.device),  
-                              batch_size=args.batch_size, 
-                              shuffle=True)
-    test_sample = DataLoader(dataset=torch.Tensor(test).to(args.device), 
-                             batch_size=args.batch_size,
-                             shuffle=False)
+    train, test = train_test_split(gaia.data, test_size=args.test_size, random_state=9999)
+    train_sample = DataLoader(dataset=torch.Tensor(train).to(args.device), batch_size=args.batch_size,  shuffle=True)
+    test_sample = DataLoader(dataset=torch.Tensor(test).to(args.device),  batch_size=args.batch_size, shuffle=False)
 
     #...define model
 
-    flow = masked_autoregressive_flow(args)
+    if args.flow_type == 'MAF': flow = masked_autoregressive_flow(args)
+    elif args.flow_type == 'coupling': flow = coupling_flow(args)
 
     if args.pretrain:
 
@@ -148,23 +144,27 @@ if __name__ == '__main__':
 
         #...pretrain the flow to fit the noisy data before deconvolution
 
-        flow = Train_Model(flow, train_sample, test_sample, args_pre , show_plots=False, save_best_state=False)
+        Train_Model(flow, train_sample, test_sample, args_pre , show_plots=False, save_best_state=False)
+        
         sample = sampler(flow, num_samples=args.num_gen)
         gaia_sample = GaiaTransform(sample, torch.zeros(sample.shape), args) 
         gaia_sample.mean = gaia.mean
         gaia_sample.std =  gaia.std
         gaia_sample.preprocess(R=gaia.R, revert=True)
+
         plot_data_projections(gaia_sample.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'pretrained noisy positions', save=args.workdir + '/result_plots/pretrained_x_model.png')    
         plot_data_projections(gaia_sample.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'pretrained noisy velocities', save=args.workdir + '/result_plots/pretrained_v_model.png')                                  
 
     #...deconvolution
 
-    deconvoluted = Train_Model(flow, train_sample, test_sample, args, show_plots=False, save_best_state=False)
+    Train_Model(flow, train_sample, test_sample, args, show_plots=False, save_best_state=False)
+    
     sample = sampler(deconvoluted, num_samples=args.num_gen)
     gaia_sample_deconv = GaiaTransform(sample, torch.zeros(sample.shape), args) 
     gaia_sample_deconv.mean = gaia.mean
     gaia_sample_deconv.std =  gaia.std
     gaia_sample_deconv.preprocess(R=gaia.R, revert=True)
+
     plot_data_projections(gaia_sample_deconv.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'deconvoluted noisy positions', save=args.workdir + '/result_plots/best_x_model.png')    
     plot_data_projections(gaia_sample_deconv.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'deconvoluted noisy velocities', save=args.workdir + '/result_plots/best_v_model.png')                                  
 
