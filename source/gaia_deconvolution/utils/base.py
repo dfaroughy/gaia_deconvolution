@@ -26,6 +26,17 @@ def make_dir(path, overwrite=False, sub_dirs=False):
     return Directory
 
 
+def savefile(filename, extension="png"):
+    counter = 1
+    base_filename, ext = os.path.splitext(filename)
+    if ext == "":
+        ext = f".{extension}"
+    unique_filename = f"{base_filename}{ext}"
+    while os.path.exists(unique_filename):
+        unique_filename = f"{base_filename}_{counter}{ext}"
+        counter += 1
+    return unique_filename
+
 def copy_parser(original_parser, description, modifications=False):
     new_parser = argparse.ArgumentParser(description=description)
     for action in original_parser._actions:

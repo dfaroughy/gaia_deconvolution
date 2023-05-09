@@ -6,20 +6,22 @@ from gaia_deconvolution.models.flows.permutation import permutation_layer
 
 def masked_autoregressive_flow(args,
                                RQS_tail_bound=12, 
-                               num_bins=20, 
                                use_residual_blocks=True, 
                                random_mask=False, 
                                save_architecture=True):
    
-    dim = args.flow_dim
-    flow_model = args.flow_type + '_' + args.flow_func
+    dim = args.dim_flow
+    flow_model = args.flow + '_' + args.flow_func
     list_transforms = []
+
+    print('INFO: model -> {}, {} transform'.format(args.flow, args.flow_func))
+
     for _ in range(args.num_flows):   
         if flow_model=='MAF_affine':
             flow = nflows.transforms.autoregressive.MaskedAffineAutoregressiveTransform(
                                                 features=dim,
-                                                hidden_features=args.hidden_dims,
-                                                context_features=args.context_dim,
+                                                hidden_features=args.dim_hidden,
+                                                context_features=args.dim_context,
                                                 num_blocks=args.num_blocks,
                                                 use_residual_blocks=use_residual_blocks,
                                                 random_mask=random_mask,
@@ -27,18 +29,18 @@ def masked_autoregressive_flow(args,
                                                 dropout_probability=args.dropout,
                                                 use_batch_norm=args.batch_norm
                                                 )
-        elif flow_model=='MAF_RQSpline':                    
+        elif flow_model=='MAF_RQSpline':  
             flow = nflows.transforms.autoregressive.MaskedPiecewiseRationalQuadraticAutoregressiveTransform(
                                                 features=dim,
-                                                hidden_features=args.hidden_dims,
-                                                context_features=args.context_dim,
+                                                hidden_features=args.dim_hidden,
+                                                context_features=args.dim_context,
                                                 num_blocks=args.num_blocks,
                                                 use_residual_blocks=use_residual_blocks,
                                                 random_mask=random_mask,
                                                 activation=args.activation,
                                                 dropout_probability=args.dropout,
                                                 use_batch_norm=args.batch_norm,
-                                                num_bins=num_bins,
+                                                num_bins=args.num_spline,
                                                 tails='linear',
                                                 tail_bound=RQS_tail_bound
                                                 )
@@ -55,35 +57,36 @@ def masked_autoregressive_flow(args,
 
 
 def coupling_flow(args,
-            RQS_tail_bound=12, 
-            num_bins=20, 
-            use_residual_blocks=None, 
-            random_mask=False, 
-            save_architecture=True):
+                  RQS_tail_bound=12, 
+                  use_residual_blocks=None, 
+                  random_mask=False, 
+                  save_architecture=True):
 
     def resnet(in_features, out_features):
         return nflows.nn.nets.ResidualNet(
                                     in_features, out_features,
-                                    context_features=args.context_dim,
-                                    hidden_features=args.hidden_dims,
+                                    hidden_features=args.dim_hidden,
+                                    context_features=args.dim_context,
                                     num_blocks=args.num_blocks,
                                     activation=args.activation,
                                     dropout_probability=args.dropout,
                                     use_batch_norm=args.batch_norm
                                     )
-    dim = args.flow_dim
-    flow_model = args.flow_type + '_' + args.flow_func
+    dim = args.dim_flow
+    flow_model = args.flow + '_' + args.flow_func
     list_transforms = [] 
     mask = torch.ones(dim)
     if args.coupl_mask=='checkers': mask[::2]=-1
     elif args.coupl_mask=='mid-split': mask[int(dim/2):]=-1  # 2006.08545
+
+    print('INFO: model -> {}, {} transform'.format(args.flow, args.flow_func))
     
     for _ in range(args.num_flows):   
-        if flow_model=='coupling_RQSpline':      
+        if flow_model=='coupling_RQSpline': 
             flow = nflows.transforms.coupling.PiecewiseRationalQuadraticCouplingTransform(
                                             mask=mask,
                                             transform_net_create_fn=resnet,
-                                            num_bins=num_bins,
+                                            num_bins=args.num_spline,
                                             tails='linear',
                                             tail_bound=RQS_tail_bound
                                             )

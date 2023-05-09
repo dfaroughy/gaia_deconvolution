@@ -5,6 +5,7 @@ from scipy.stats import gaussian_kde
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy import stats
+from gaia_deconvolution.utils.base import savefile
 
 sns.set_theme(style="dark")
 
@@ -45,9 +46,7 @@ def plot_data_projections(sample,
         axes[0, idx].set_xlim(xlim[idx])
         axes[0, idx].set_xlabel(xlabel)
         axes[0, idx].set_ylabel('counts')
-        # axes[0, idx].set_title(f"{xlabel}")
         axes[0, idx].grid()
-
 
         sns.kdeplot(x=data_x, y=data_y, levels=6, color="w", linewidths=1, ax=axes[1, idx])
         sns.scatterplot(x=data_x, y=data_y, s=5, color=".15", ax=axes[1, idx])
@@ -57,7 +56,6 @@ def plot_data_projections(sample,
         axes[1, idx].set_ylim(ylim[idx])
         axes[1, idx].set_xlabel(xlabel)
         axes[1, idx].set_ylabel(ylabel)
-        # axes[1, idx].set_title(f"{xlabel} - {ylabel}")
         axes[1, idx].grid()
 
     fig.suptitle(title)
@@ -78,4 +76,4 @@ def plot_loss(train, valid, args):
     plt.title("loss_min={}, epochs={}".format(round(loss_min,6),len(train_loss)))
     fig.tight_layout()
     plt.grid() 
-    plt.savefig(args.workdir+'/loss.pdf')
+    plt.savefig(savefile(args.workdir+'/loss.png', extension="png"))
