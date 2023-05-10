@@ -107,7 +107,7 @@ if __name__ == '__main__':
     #...create working folders and save args
 
     args = params.parse_args()
-    args.workdir = make_dir('Results_Gaia_Deconvolution', sub_dirs=['data_plots', 'result_plots'], overwrite=False)
+    args.workdir = make_dir('Results_Gaia_Deconvolution', sub_dirs=['data_plots', 'results_plots'], overwrite=False)
     print("#================================================")
     print("INFO: working directory: {}".format(args.workdir))
     print("#================================================")
