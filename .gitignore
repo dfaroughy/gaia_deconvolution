@@ -8,5 +8,5 @@ __pycache__
 main/__pycache__
 source/gaia_deconvolution/models/__pycache__
 source/gaia_deconvolution/data/__pycache__
-Results_Gaia_*
+main/Results_Gaia_*
 
