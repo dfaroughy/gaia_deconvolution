@@ -26,9 +26,9 @@ params = argparse.ArgumentParser(description='arguments for the deconvolution mo
 params.add_argument('--workdir',      help='working directory', type=str)
 params.add_argument('--device',       default='cuda:0',         help='where to train')
 params.add_argument('--dim',          default=6,                help='dimensionalaty of data: (x,y,z,vx,vy,vz)', type=int)
-params.add_argument('--num_mc',       default=500,              help='number of MC samples for integration', type=int)
+params.add_argument('--num_mc',       default=800,              help='number of MC samples for integration', type=int)
 params.add_argument('--loss',         default=deconv_loss,      help='loss function')
-params.add_argument('--pretrain',     default=False,            help='if True, pretrain the flow on the noisy data before deconvoling', type=bool)
+params.add_argument('--pretrain',     default=True,            help='if True, pretrain the flow on the noisy data before deconvoling', type=bool)
 
 #...flow params:
 
@@ -37,7 +37,7 @@ params.add_argument('--dim_flow',     default=6,            help='dimensionalaty
 params.add_argument('--flow_func',    default='RQSpline',   help='type of flow transformation: affine or RQSpline', type=str)
 params.add_argument('--coupl_mask',   default='mid-split',  help='mask type [only for coupling flows]: mid-split or checkers', type=str)
 params.add_argument('--permutation',  default='inverse',    help='type of fixed permutation between flows: n-cycle or inverse', type=str)
-params.add_argument('--num_flows',    default=5,            help='num of flow layers', type=int)
+params.add_argument('--num_flows',    default=6,            help='num of flow layers', type=int)
 params.add_argument('--dim_hidden',   default=128,          help='dimension of hidden layers', type=int)
 params.add_argument('--num_spline',   default=30,           help='num of spline for rational_quadratic', type=int)
 params.add_argument('--num_blocks',   default=2,            help='num of MADE blocks in flow', type=int)
@@ -46,9 +46,9 @@ params.add_argument('--dim_context',  default=None,         help='dimension of c
 #...training params:
 
 params.add_argument('--batch_size',      default=500,          help='size of training/testing batch', type=int)
-params.add_argument('--num_steps',       default=5,            help='split batch into sub-batch steps for gradient accumulation', type=int)
+params.add_argument('--num_steps',       default=10,            help='split batch into sub-batch steps for gradient accumulation', type=int)
 params.add_argument('--test_size',       default=0.2,          help='fraction of testing data', type=float)
-params.add_argument('--max_epochs',      default=1,            help='max num of training epochs', type=int)
+params.add_argument('--max_epochs',      default=10,           help='max num of training epochs', type=int)
 params.add_argument('--max_patience',    default=20,           help='terminate if test loss is not changing', type=int)
 params.add_argument('--lr',              default=1e-4,         help='learning rate of generator optimizer', type=float)
 params.add_argument('--activation',      default=F.leaky_relu, help='activation function for neural networks')
@@ -81,8 +81,8 @@ params_pre = copy_parser(params,
                          modifications={'loss' : {'default' : neglogprob_loss}, 
                                         'batch_steps' : {'default' : False}, 
                                         'num_mc' : {'default' : 0},
-                                        'max_epochs' :  {'default' : 1},
-                                        'max_patience' :  {'default' : 1}
+                                        'max_epochs' :  {'default' : 10},
+                                        'max_patience' :  {'default' : 10}
                                         } )
 
 ####################################################################################################################
@@ -136,6 +136,7 @@ if __name__ == '__main__':
     elif args.flow == 'coupling': flow = coupling_flow(args)
 
     flow = flow.to(args.device)
+    print('INFO: Max GPU memory usage: ', torch.cuda.max_memory_allocated(args.device)/1e6, 'MB')
 
     if args.pretrain:
 
@@ -154,8 +155,8 @@ if __name__ == '__main__':
         gaia_sample.std =  gaia.std
         gaia_sample.preprocess(R=gaia.R, revert=True)
 
-        # plot_data_projections(gaia_sample.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'pretrained noisy positions', save=args.workdir + '/result_plots/pretrained_x_model.png')    
-        # plot_data_projections(gaia_sample.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'pretrained noisy velocities', save=args.workdir + '/result_plots/pretrained_v_model.png')                                  
+        plot_data_projections(gaia_sample.x, bin_size=0.1, num_stars=args.num_gen, xlim=xlim, ylim=ylim, title=r'pretrained noisy positions', save=args.workdir + '/result_plots/pretrained_x_model.png')    
+        plot_data_projections(gaia_sample.v, bin_size=5, num_stars=args.num_gen, xlim=vxlim, ylim=vylim, label=vlabel, title=r'pretrained noisy velocities', save=args.workdir + '/result_plots/pretrained_v_model.png')                                  
 
     #...deconvolution
 

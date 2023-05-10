@@ -85,7 +85,6 @@ class Train_Epoch(nn.Module):
 
         self.loss_per_epoch.append(self.loss)
 
-
 class Evaluate_Epoch(nn.Module):
 
     def __init__(self, model, args):
@@ -117,7 +116,7 @@ class Evaluate_Epoch(nn.Module):
                     sub_batch_loss += current_loss.item() / self.args.batch_size
                 self.loss += sub_batch_loss / len(data)
         self.loss_per_epoch.append(self.loss)
-
+        print('INFO: max GPU memory usage: ', torch.cuda.max_memory_allocated(self.args.device)/1e6, 'MB')
 
     def check_patience(self, show_plots=True, save_best_state=True):
         self.model.eval()

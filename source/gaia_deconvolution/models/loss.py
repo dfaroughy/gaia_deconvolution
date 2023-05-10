@@ -29,7 +29,6 @@ def deconv_loss(model, batch, args):
 	x_noisy = x_noisy.to(args.device)									
 	loss = - torch.logsumexp(torch.reshape(model.log_prob(x_noisy),(-1, n)),dim=-1) 
 	loss +=  torch.log(torch.tensor(1.0 if not n else n))
-
 	return loss
 
 # def deconv_loss(model, batch, args):
