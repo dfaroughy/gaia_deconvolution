@@ -1,6 +1,6 @@
 {
     "workdir": "Results_Gaia_phase-space_noisy_density",
-    "device": "cuda:2",
+    "device": "cuda:1",
     "dim": 6,
     "loss": "neglogprob_loss",
     "flow": "coupling",
@@ -8,15 +8,15 @@
     "flow_func": "RQSpline",
     "coupl_mask": "mid-split",
     "permutation": "inverse",
-    "num_flows": 10,
+    "num_flows": 3,
     "dim_hidden": 128,
-    "num_spline": 40,
+    "num_spline": 20,
     "num_blocks": 2,
     "dim_context": null,
-    "batch_size": 500,
-    "num_steps": 10,
+    "batch_size": 1024,
+    "num_steps": 0,
     "test_size": 0.2,
-    "max_epochs": 1000,
+    "max_epochs": 2,
     "max_patience": 20,
     "lr": 0.0001,
     "activation": "leaky_relu",
@@ -30,5 +30,5 @@
     ],
     "radius": 3.5,
     "num_stars": 160834,
-    "num_gen": 100000
+    "num_gen": 1000
 }
