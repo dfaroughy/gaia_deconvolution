@@ -13,11 +13,10 @@ from gaia_deconvolution.data.plots import plot_data_projections
 
 class GaiaTransform:
 
-    def __init__(self, data, args, covs=None):
+    def __init__(self, data, covs, args):
 
         self.args = args
-        if not covs: self.data = data
-        else:  self.data = torch.cat((data, covs), dim=1)        
+        self.data = torch.cat((data, covs), dim=1)        
         self.mean = torch.zeros(6)
         self.std = torch.zeros(6)
         self.R = None
@@ -108,7 +107,7 @@ class GaiaTransform:
             self.standardization(verbose=False)
         return self
 
-    def plot(self, dat_type, title, 
+    def plot(self, data_type, title, 
              bin_size=0.1, 
              num_stars=None, 
              cmap="magma",
@@ -116,18 +115,18 @@ class GaiaTransform:
              ylim=None, 
              save_dir=None):
         
-        if isinstance(dat_type, str):  
+        if isinstance(data_type, str):  
             label = data_type
             if not xlim:
-                if dat_type == 'x':
+                if data_type == 'x':
                     bin_size = 0.1
                     xlim = [(3, 13), (-5, 5), (-5, 5)]
                     ylim = [(-5, 5), (-5, 5), (3, 13)]
-                if dat_type == 'v': 
+                if data_type == 'v': 
                     bin_size = 5
                     xlim = [(-400, 400), (-400, 400), (-400, 400)]
                     ylim = [(-400, 400), (-400, 400), (-400, 400)]
-            data = getattr(self, dat_type)
+            data = getattr(self, data_type)
 
         if not num_stars: num_stars = self.args.num_gen
         if not save_dir: save_dir = self.args.workdir

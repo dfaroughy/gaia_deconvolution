@@ -18,6 +18,31 @@ from gaia_deconvolution.data.transform import GaiaTransform
 sys.path.append("../")
 torch.set_default_dtype(torch.float64)
 
+
+'''
+    Description:
+
+    Normalizing flow (maf or coupling layer) for denoising 
+    the Gaia observation errors with a flow-based deconvolution. 
+    The procedure consists of two steps:
+
+        1. pretraining: first estimate the noisy phase-space density  
+           with a normalizing flow (maf or coupling).learning can be crude.
+           the loss is the negative log probability.
+
+        2. deconvolution: use the pretrained model as input and train 
+           over it using the deconvolution loss --loss = deconv_loss.
+           the doconvolution loss performs a MC integration with number
+           of samples controled by --num_mc. 
+    
+    tips:
+
+        For the data to fit in GPU it is preffereble to sub-batch eahc batch 
+        in steps (--num_steps) and perform gradient accumulation. 
+
+'''
+
+
 ####################################################################################################################
 
 params = argparse.ArgumentParser(description='arguments for the deconvolution model')
@@ -60,7 +85,6 @@ params.add_argument('--x_sun',      default=[8.122, 0.0, 0.0208],  help='sun pos
 params.add_argument('--radius',     default=3.5,                   help='only keep stars within radius [kpc] of sun', type=float)
 params.add_argument('--num_stars',  default=None,                  help='total number of stars used for train/testing', type=float)
 params.add_argument('--num_gen',    default=50000,                 help='number of sampled stars from model', type=int)
-params.add_argument('--scale_cov',  default=1.0,                   help='rescales the covariance matrix of Gaia noise data', type=float)
 
 #... pretrain params: define new parser for the pre-training model (only necesary if --pretrain=True):
 
@@ -92,7 +116,7 @@ if __name__ == '__main__':
     data_file =  "./data/data.angle_340.smeared_00.npy"
     covs_file=  "./data/data.angle_340.smeared_00.cov.npy"
     data = torch.tensor(np.load(data_file))
-    covs = args.scale_cov * torch.squeeze(torch.reshape( torch.tensor(np.load(covs_file)), (-1, 1, 6*6)))
+    covs = torch.squeeze(torch.reshape( torch.tensor(np.load(covs_file)), (-1, 1, 6*6)))
     
     #...smear and preprocess data
 
@@ -119,7 +143,7 @@ if __name__ == '__main__':
 
     flow = flow.to(args.device)
 
-    #...pretrain flow to estimate star noisy phase-space
+    #...pretrain flow to estimate noisy phase-space
 
     if args.pretrain:
 
@@ -141,7 +165,7 @@ if __name__ == '__main__':
         gaia_sample.plot('x', title='pretrained position density', save_dir=args.workdir+'/results_plots/') 
         gaia_sample.plot('v', title='pretrained velocity density', save_dir=args.workdir+'/results_plots/') 
 
-    #...deconvolution
+    #... apply deconvolution on pretrained flow model
 
     Train_Model(flow, train_sample, test_sample, args, show_plots=True, save_best_state=True)
     

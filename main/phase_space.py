@@ -21,8 +21,15 @@ torch.set_default_dtype(torch.float64)
 
 
 '''
-We us a normalizing flow (maf or coupling layer) in order to learn the phase-space density
-of stars within 3.5 kpc from the sun.
+    Description:
+
+    Normalizing flow (maf or coupling layer) for learning the 
+    phase-space density of stars within 3.5 kpc from the sun. No deconvolution.
+
+    tips:
+
+     --data 'noisy': flow learns the noisy star density (fuzzy ball in position space)
+     --data 'truth': flow learns the truth star density (hard-edged ball in position space)
 
 '''
 
@@ -31,7 +38,7 @@ of stars within 3.5 kpc from the sun.
 params = argparse.ArgumentParser(description='arguments for the flow model for phase-space density estimation')
 
 params.add_argument('--workdir',      help='working directory',   type=str)
-params.add_argument('--device',       default='cuda:1',           help='where to train')
+params.add_argument('--device',       default='cuda:2',           help='where to train')
 params.add_argument('--dim',          default=6,                  help='dimensionalaty of data: (x,y,z,vx,vy,vz)', type=int)
 params.add_argument('--loss',         default=neglogprob_loss,    help='loss function')
 
@@ -61,7 +68,8 @@ params.add_argument('--batch_norm',    default=True,         help='apply batch n
 params.add_argument('--dropout',       default=0.1,          help='dropout probability', type=float)
 
 #... data params:
-params.add_argument('--smear',      default=False,                 help='smear or not the data', type=bool)
+
+params.add_argument('--data',       default='noisy',               help='smeared or truth data', type=str)
 params.add_argument('--x_sun',      default=[8.122, 0.0, 0.0208],  help='sun position [kpc] wrt galactic center', type=list)
 params.add_argument('--radius',     default=3.5,                   help='only keep stars within radius [kpc] of sun', type=float)
 params.add_argument('--num_stars',  default=None,                  help='total number of stars used for train/testing', type=float)
@@ -74,7 +82,7 @@ if __name__ == '__main__':
     #...create working folders and save args
 
     args = params.parse_args()
-    args.workdir = make_dir('Results_Gaia_phase-space_density_estimation', sub_dirs=['data_plots', 'result_plots'], overwrite=False)
+    args.workdir = make_dir('Results_Gaia_phase-space_{}_density'.format(args.data), sub_dirs=['data_plots', 'result_plots'], overwrite=True)
     print("#================================================")
     print("INFO: working directory: {}".format(args.workdir))
     print("#================================================")
@@ -84,16 +92,17 @@ if __name__ == '__main__':
     data_file =  "./data/data.angle_340.smeared_00.npy"
     covs_file =  "./data/data.angle_340.smeared_00.cov.npy"
     data = torch.tensor(np.load(data_file))
-    covs = args.scale_cov * torch.squeeze(torch.reshape( torch.tensor(np.load(covs_file)), (-1, 1, 6*6)))   
+    covs = torch.squeeze(torch.reshape( torch.tensor(np.load(covs_file)), (-1, 1, 6*6)))   
 
     #...smear and preprocess data
 
     gaia = GaiaTransform(data, covs, args)
 
-    if args.smear: gaia.smear()
+    if args.data == 'noisy': gaia.smear()
 
     gaia.plot('x', title='target positions', save_dir=args.workdir+'/data_plots/') 
     gaia.plot('v', title='target velocities', save_dir=args.workdir+'/data_plots/') 
+    
     gaia.preprocess()
 
     #...store parser arguments
@@ -126,6 +135,7 @@ if __name__ == '__main__':
     #...transofrm back to phase-space amd plot
 
     gaia_sample = GaiaTransform(sample, torch.zeros(sample.shape), args) 
+
     gaia_sample.mean = gaia.mean
     gaia_sample.std =  gaia.std
     gaia_sample.preprocess(R=gaia.R, reverse=True) # invert preprocess transformations
