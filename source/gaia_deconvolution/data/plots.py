@@ -11,16 +11,20 @@ sns.set_theme(style="dark")
 
 def plot_data_projections(sample, 
                           title, 
-                          save, 
+                          save_dir, 
                           num_stars=20000, 
                           bin_size=None,
-                          xlim=[(-5, 5), (-5, 5), (-5, 5)], 
-                          ylim=[(-5, 5), (-5, 5), (-5, 5)], 
+                          xlim=[(-10, 10), (-10, 10), (-10, 10)], 
+                          ylim=[(-10, 10), (-10, 10), (-10, 10)], 
                           figsize=(15, 10),
-                          label=["x (kpc)", "y (kpc)", "z (kpc)"],
+                          label='x',
                           cmap="magma"):
 
     print("INFO: plotting -> {}".format(title))
+
+    if label == 'x': label = [r"$x$ (kpc)", r"$y$ (kpc)", r"$z$ (kpc)"]
+    elif label == 'v': label = [r"$v_x$ (km/s)", r"$v_y$ (km/s)", r"$v_z$ (km/s)"]
+    else: pass
     
     # Extract x, y, and z coordinates
     x = sample[:num_stars, 0]#.numpy()
@@ -60,7 +64,8 @@ def plot_data_projections(sample,
 
     fig.suptitle(title)
     fig.tight_layout()
-    plt.savefig(save)
+    plt.savefig(save_dir+'/{}.png'.format(title.replace(" ", "_")))
+
 
 
 

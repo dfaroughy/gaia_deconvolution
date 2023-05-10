@@ -13,10 +13,11 @@ from gaia_deconvolution.data.plots import plot_data_projections
 
 class GaiaTransform:
 
-    def __init__(self, data, covs, args):
-        
+    def __init__(self, data, args, covs=None):
+
         self.args = args
-        self.data = torch.cat((data, covs), dim=1)
+        if not covs: self.data = data
+        else:  self.data = torch.cat((data, covs), dim=1)        
         self.mean = torch.zeros(6)
         self.std = torch.zeros(6)
         self.R = None
@@ -31,11 +32,11 @@ class GaiaTransform:
     def xv(self):
         return self.data[:, :6]
     @property
-    def covs(self):
-        return self.data[:,6:]
-    @property
     def num_stars(self):
         return self.data.shape[0]
+    @property
+    def covs(self):
+        return self.data[:,6:]
 
     def get_stars_near_sun(self, R=None, verbose=True):
         if not R: R=self.args.radius 
@@ -89,7 +90,7 @@ class GaiaTransform:
             self.data[:,3:6] = (self.v - self.mean[3:]) / self.std[3:]
         return self 
 
-    def preprocess(self, R=None, revert=False, verbose=True):  
+    def preprocess(self, R=None, reverse=False, verbose=True):  
         if verbose: print('INFO: preprocessing data')
         x0 = torch.tensor(self.args.x_sun)
         if R:
@@ -97,8 +98,7 @@ class GaiaTransform:
         else:
             dist = torch.norm(self.data[:,:3] - x0, dim=-1)
             self.R = torch.max(dist) * (1+1e-6)
-
-        if revert: 
+        if reverse: 
             self.standardization(inverse=True, verbose=False)
             self.radial_blowup_transform(inverse=True, verbose=False)
             self.to_unit_ball(R=R, inverse=True, verbose=False)
@@ -106,4 +106,40 @@ class GaiaTransform:
             self.to_unit_ball(R=R, verbose=False)
             self.radial_blowup_transform( verbose=False)
             self.standardization(verbose=False)
-        return self 
+        return self
+
+    def plot(self, dat_type, title, 
+             bin_size=0.1, 
+             num_stars=None, 
+             cmap="magma",
+             xlim=None, 
+             ylim=None, 
+             save_dir=None):
+        
+        if isinstance(dat_type, str):  
+            label = data_type
+            if not xlim:
+                if dat_type == 'x':
+                    bin_size = 0.1
+                    xlim = [(3, 13), (-5, 5), (-5, 5)]
+                    ylim = [(-5, 5), (-5, 5), (3, 13)]
+                if dat_type == 'v': 
+                    bin_size = 5
+                    xlim = [(-400, 400), (-400, 400), (-400, 400)]
+                    ylim = [(-400, 400), (-400, 400), (-400, 400)]
+            data = getattr(self, dat_type)
+
+        if not num_stars: num_stars = self.args.num_gen
+        if not save_dir: save_dir = self.args.workdir
+
+        plot_data_projections(data, bin_size=bin_size, 
+                                    num_stars=num_stars,
+                                    label=label, 
+                                    cmap=cmap, 
+                                    xlim=xlim, 
+                                    ylim=ylim, 
+                                    title=title, 
+                                    save_dir=save_dir)
+
+
+    

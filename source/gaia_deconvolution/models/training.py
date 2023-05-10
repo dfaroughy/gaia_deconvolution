@@ -116,7 +116,7 @@ class Evaluate_Epoch(nn.Module):
                     sub_batch_loss += current_loss.item() / self.args.batch_size
                 self.loss += sub_batch_loss / len(data)
         self.loss_per_epoch.append(self.loss)
-        print('INFO: max GPU memory usage: ', torch.cuda.max_memory_allocated(self.args.device)/1e6, 'MB')
+        # print('INFO: max GPU memory usage: ', torch.cuda.max_memory_allocated(self.args.device)/1e6, 'MB')
 
     def check_patience(self, show_plots=True, save_best_state=True):
         self.model.eval()
@@ -129,10 +129,8 @@ class Evaluate_Epoch(nn.Module):
                     sample = sampler(self.best_model, num_samples=20000)
                     sample_x = sample[:,:3]
                     sample_v = sample[:,3:]
-                    plot_data_projections(sample_x, bin_size=0.1, title=r'positions Epoch={}'.format(self.epoch), save=self.args.workdir  + '/result_plots/result_x_Epoch_{}.pdf'.format(self.epoch))
-                    plot_data_projections(sample_v, bin_size=0.2, title=r'velocities Epoch={}'.format(self.epoch), save=self.args.workdir  + '/result_plots/result_v_Epoch_{}.pdf'.format(self.epoch),
-                                                    xlim=[(-10, 10), (-10, 10), (-10, 10)], 
-                                                    ylim=[(-10, 10), (-10, 10), (-10, 10)])
+                    plot_data_projections(sample_x, label='x', bin_size=0.2, title=r'positions Epoch {}'.format(self.epoch), save_dir=self.args.workdir  + '/result_plots/')
+                    plot_data_projections(sample_v, label='v', bin_size=0.2, title=r'velocities Epoch {}'.format(self.epoch), save_dir=self.args.workdir  + '/result_plots/')
             if save_best_state:
                 torch.save(self.best_model.state_dict(), self.args.workdir + '/best_model.pth')       
         else: self.patience += 1
