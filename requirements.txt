@@ -11,3 +11,5 @@ seaborn
 jupyter[notebook]
 scikit-learn
 argparse
+tensorboard
+

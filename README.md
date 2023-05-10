@@ -1,4 +1,4 @@
-# Gaia Deconvolution
+# Gaia Data Deconvolution
 
 ## install
 
