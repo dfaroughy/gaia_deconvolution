@@ -2,8 +2,8 @@
 ._*
 .DS_store
 main/.DS_Store
-source/gaia_deconvolution/models/
-source/gaia_deconvolution/data/,DS_Store
+source/gaia_deconvolution/models/.DS_Store
+source/gaia_deconvolution/data/.DS_Store
 __pycache__
 main/__pycache__
 source/gaia_deconvolution/models/__pycache__
