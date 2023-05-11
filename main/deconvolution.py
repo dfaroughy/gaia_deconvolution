@@ -49,11 +49,11 @@ torch.set_default_dtype(torch.float64)
 params = argparse.ArgumentParser(description='arguments for the deconvolution model')
 
 params.add_argument('--workdir',      help='working directory', type=str)
-params.add_argument('--device',       default='cuda:1',         help='where to train')
+params.add_argument('--device',       default='cuda:0',         help='where to train')
 params.add_argument('--dim',          default=6,                help='dimensionalaty of data: (x,y,z,vx,vy,vz)', type=int)
-params.add_argument('--num_mc',       default=2500,              help='number of MC samples for integration', type=int)
+params.add_argument('--num_mc',       default=5000,              help='number of MC samples for integration', type=int)
 params.add_argument('--loss',         default=deconv_loss,      help='loss function')
-params.add_argument('--pretrain',     default=False,            help='if True, pretrain the flow on the noisy data before deconvoling', type=bool)
+params.add_argument('--pretrain',     default=True,            help='if True, pretrain the flow on the noisy data before deconvoling', type=bool)
 
 #...flow params:
 
@@ -70,10 +70,10 @@ params.add_argument('--dim_context',  default=None,         help='dimension of c
 
 #...training params:
 
-params.add_argument('--batch_size',      default=6000,          help='size of training/testing batch', type=int)
-params.add_argument('--num_steps',       default=1000,           help='split batch into n_steps sub-batches + gradient accumulation', type=int)
+params.add_argument('--batch_size',      default=1000,          help='size of training/testing batch', type=int)
+params.add_argument('--num_steps',       default=200,           help='split batch into n_steps sub-batches + gradient accumulation', type=int)
 params.add_argument('--test_size',       default=0.2,          help='fraction of testing data', type=float)
-params.add_argument('--max_epochs',      default=100,         help='max num of training epochs', type=int)
+params.add_argument('--max_epochs',      default=10,         help='max num of training epochs', type=int)
 params.add_argument('--max_patience',    default=10,           help='terminate if test loss is not changing', type=int)
 params.add_argument('--lr',              default=1e-4,         help='learning rate of generator optimizer', type=float)
 params.add_argument('--activation',      default=F.leaky_relu, help='activation function for neural networks')
@@ -93,9 +93,10 @@ params_pre = copy_parser(params,
                          description='arguments for the pre-trining model: this flow learns the noisy data distribution before the deconvoling step',
                          modifications={
                                         'loss' : {'default' : neglogprob_loss}, 
+                                        'batch_size' : {'default' : 512},
                                         'num_steps' : {'default' : False}, 
                                         'num_mc' : {'default' : 0},
-                                        'max_epochs' :  {'default' : 10},
+                                        'max_epochs' :  {'default' : 100},
                                         'max_patience' :  {'default' : 10} 
                                         } 
                         )
@@ -131,11 +132,6 @@ if __name__ == '__main__':
     print("INFO: num stars: {}".format(args.num_stars))
     save_arguments(args, name='inputs.json')
 
-    #...prepare train/test samples
-
-    train, test  = train_test_split(gaia.data, test_size=args.test_size, random_state=9999)
-    train_sample = DataLoader(dataset=torch.Tensor(train), batch_size=args.batch_size, shuffle=True)
-    test_sample  = DataLoader(dataset=torch.Tensor(test),  batch_size=args.batch_size, shuffle=False)
 
     #...define model
 
@@ -143,6 +139,10 @@ if __name__ == '__main__':
     elif args.flow == 'coupling': flow = coupling_flow(args)
 
     flow = flow.to(args.device)
+
+    #...prepare train/test samples
+
+    train, test  = train_test_split(gaia.data, test_size=args.test_size, random_state=9999)
 
     #...pretrain flow to estimate noisy phase-space
 
@@ -152,6 +152,9 @@ if __name__ == '__main__':
         args_pre = params_pre.parse_args()
         args_pre.workdir = args.workdir 
         save_arguments(args_pre, name='input_pretrain.json')
+
+        train_sample = DataLoader(dataset=torch.Tensor(train), batch_size=args_pre.batch_size, shuffle=True)
+        test_sample  = DataLoader(dataset=torch.Tensor(test),  batch_size=args_pre.batch_size, shuffle=False)
 
         Train_Model(flow, train_sample, test_sample, args_pre , show_plots=False, save_best_state=False)
 
@@ -163,10 +166,13 @@ if __name__ == '__main__':
         gaia_sample.std =  gaia.std
         gaia_sample.preprocess(R=gaia.R, reverse=True)
 
-        gaia_sample.plot('x', title='pretrained position density', save_dir=args.workdir+'/results_plots/') 
-        gaia_sample.plot('v', title='pretrained velocity density', save_dir=args.workdir+'/results_plots/') 
+        # gaia_sample.plot('x', title='pretrained position density', save_dir=args.workdir+'/results_plots') 
+        # gaia_sample.plot('v', title='pretrained velocity density', save_dir=args.workdir+'/results_plots') 
 
     #... apply deconvolution on pretrained flow model
+
+    train_sample = DataLoader(dataset=torch.Tensor(train), batch_size=args.batch_size, shuffle=True)
+    test_sample  = DataLoader(dataset=torch.Tensor(test),  batch_size=args.batch_size, shuffle=False)
 
     Train_Model(flow, train_sample, test_sample, args, show_plots=True, save_best_state=True)
     
@@ -177,6 +183,7 @@ if __name__ == '__main__':
     gaia_sample_deconv.mean = gaia.mean
     gaia_sample_deconv.std =  gaia.std
     gaia_sample_deconv.preprocess(R=gaia.R, reverse=True)
-    gaia_sample.plot('x', title='deconvoluted position density', save_dir=args.workdir+'/results_plots/') 
-    gaia_sample.plot('v', title='deconvoluted velocity density', save_dir=args.workdir+'/results_plots/') 
+
+    gaia_sample_deconv.plot('x', title='deconvoluted position density', save_dir=args.workdir+'/results_plots') 
+    gaia_sample_deconv.plot('v', title='deconvoluted velocity density', save_dir=args.workdir+'/results_plots') 
 
