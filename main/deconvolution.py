@@ -49,9 +49,9 @@ torch.set_default_dtype(torch.float64)
 params = argparse.ArgumentParser(description='arguments for the deconvolution model')
 
 params.add_argument('--workdir',      help='working directory', type=str)
-params.add_argument('--device',       default='cuda:0',         help='where to train')
+params.add_argument('--device',       default='cuda:1',         help='where to train')
 params.add_argument('--dim',          default=6,                help='dimensionalaty of data: (x,y,z,vx,vy,vz)', type=int)
-params.add_argument('--num_mc',       default=500,              help='number of MC samples for integration', type=int)
+params.add_argument('--num_mc',       default=2500,              help='number of MC samples for integration', type=int)
 params.add_argument('--loss',         default=deconv_loss,      help='loss function')
 params.add_argument('--pretrain',     default=False,            help='if True, pretrain the flow on the noisy data before deconvoling', type=bool)
 
@@ -62,19 +62,19 @@ params.add_argument('--dim_flow',     default=6,            help='dimensionalaty
 params.add_argument('--flow_func',    default='RQSpline',   help='type of flow transformation: affine or RQSpline', type=str)
 params.add_argument('--coupl_mask',   default='mid-split',  help='mask type [only for coupling flows]: mid-split or checkers', type=str)
 params.add_argument('--permutation',  default='inverse',    help='type of fixed permutation between flows: n-cycle or inverse', type=str)
-params.add_argument('--num_flows',    default=6,            help='num of flow layers', type=int)
+params.add_argument('--num_flows',    default=10,            help='num of flow layers', type=int)
 params.add_argument('--dim_hidden',   default=128,          help='dimension of hidden layers', type=int)
-params.add_argument('--num_spline',   default=25,           help='num of spline for rational_quadratic', type=int)
+params.add_argument('--num_spline',   default=30,           help='num of spline for rational_quadratic', type=int)
 params.add_argument('--num_blocks',   default=2,            help='num of MADE blocks in flow', type=int)
 params.add_argument('--dim_context',  default=None,         help='dimension of context features', type=int)
 
 #...training params:
 
-params.add_argument('--batch_size',      default=500,          help='size of training/testing batch', type=int)
-params.add_argument('--num_steps',       default=10,           help='split batch into n_steps sub-batches + gradient accumulation', type=int)
+params.add_argument('--batch_size',      default=6000,          help='size of training/testing batch', type=int)
+params.add_argument('--num_steps',       default=1000,           help='split batch into n_steps sub-batches + gradient accumulation', type=int)
 params.add_argument('--test_size',       default=0.2,          help='fraction of testing data', type=float)
-params.add_argument('--max_epochs',      default=1000,         help='max num of training epochs', type=int)
-params.add_argument('--max_patience',    default=20,           help='terminate if test loss is not changing', type=int)
+params.add_argument('--max_epochs',      default=100,         help='max num of training epochs', type=int)
+params.add_argument('--max_patience',    default=10,           help='terminate if test loss is not changing', type=int)
 params.add_argument('--lr',              default=1e-4,         help='learning rate of generator optimizer', type=float)
 params.add_argument('--activation',      default=F.leaky_relu, help='activation function for neural networks')
 params.add_argument('--batch_norm',      default=True,         help='apply batch normalization layer to flow blocks', type=bool)
@@ -85,7 +85,7 @@ params.add_argument('--dropout',         default=0.1,          help='dropout pro
 params.add_argument('--x_sun',      default=[8.122, 0.0, 0.0208],  help='sun position [kpc] wrt galactic center', type=list)
 params.add_argument('--radius',     default=3.5,                   help='only keep stars within radius [kpc] of sun', type=float)
 params.add_argument('--num_stars',  default=None,                  help='total number of stars used for train/testing', type=float)
-params.add_argument('--num_gen',    default=50000,                 help='number of sampled stars from model', type=int)
+params.add_argument('--num_gen',    default=100000,                 help='number of sampled stars from model', type=int)
 
 #... pretrain params: define new parser for the pre-training model (only necesary if --pretrain=True):
 
@@ -93,7 +93,7 @@ params_pre = copy_parser(params,
                          description='arguments for the pre-trining model: this flow learns the noisy data distribution before the deconvoling step',
                          modifications={
                                         'loss' : {'default' : neglogprob_loss}, 
-                                        'batch_steps' : {'default' : False}, 
+                                        'num_steps' : {'default' : False}, 
                                         'num_mc' : {'default' : 0},
                                         'max_epochs' :  {'default' : 10},
                                         'max_patience' :  {'default' : 10} 
