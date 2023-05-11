@@ -129,8 +129,8 @@ class Evaluate_Epoch(nn.Module):
                     sample = sampler(self.best_model, num_samples=20000)
                     sample_x = sample[:,:3]
                     sample_v = sample[:,3:]
-                    plot_data_projections(sample_x, label='x', bin_size=0.2, title=r'positions Epoch {}'.format(self.epoch), save_dir=self.args.workdir  + '/result_plots/')
-                    plot_data_projections(sample_v, label='v', bin_size=0.2, title=r'velocities Epoch {}'.format(self.epoch), save_dir=self.args.workdir  + '/result_plots/')
+                    plot_data_projections(sample_x, label='x', bin_size=0.2, title=r'positions Epoch {}'.format(self.epoch), save_dir=self.args.workdir  + '/results_plots')
+                    plot_data_projections(sample_v, label='v', bin_size=0.2, title=r'velocities Epoch {}'.format(self.epoch), save_dir=self.args.workdir  + '/results_plots')
             if save_best_state:
                 torch.save(self.best_model.state_dict(), self.args.workdir + '/best_model.pth')       
         else: self.patience += 1
