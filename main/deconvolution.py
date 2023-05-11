@@ -49,11 +49,11 @@ torch.set_default_dtype(torch.float64)
 params = argparse.ArgumentParser(description='arguments for the deconvolution model')
 
 params.add_argument('--workdir',      help='working directory', type=str)
-params.add_argument('--device',       default='cuda:0',         help='where to train')
+params.add_argument('--device',       default='cuda:1',         help='where to train')
 params.add_argument('--dim',          default=6,                help='dimensionalaty of data: (x,y,z,vx,vy,vz)', type=int)
-params.add_argument('--num_mc',       default=2500,              help='number of MC samples for integration', type=int)
+params.add_argument('--num_mc',       default=2500,             help='number of MC samples for integration', type=int)
 params.add_argument('--loss',         default=deconv_loss,      help='loss function')
-params.add_argument('--pretrain',     default=True,            help='if True, pretrain the flow on the noisy data before deconvoling', type=bool)
+params.add_argument('--pretrain',     default=True,             help='if True, pretrain the flow on the noisy data before deconvoling', type=bool)
 
 #...flow params:
 
@@ -73,7 +73,7 @@ params.add_argument('--dim_context',  default=None,         help='dimension of c
 params.add_argument('--batch_size',      default=2000,         help='size of training/testing batch', type=int)
 params.add_argument('--num_steps',       default=1000,         help='split batch into n_steps sub-batches + gradient accumulation', type=int)
 params.add_argument('--test_size',       default=0.2,          help='fraction of testing data', type=float)
-params.add_argument('--seed',            default=999,          help='random seed', type=int)
+params.add_argument('--seed',            default=9999,         help='random seed', type=int)
 params.add_argument('--max_epochs',      default=10,           help='max num of training epochs', type=int)
 params.add_argument('--max_patience',    default=10,           help='terminate if test loss is not changing', type=int)
 params.add_argument('--lr',              default=1e-4,         help='learning rate of generator optimizer', type=float)
@@ -85,8 +85,12 @@ params.add_argument('--dropout',         default=0.1,          help='dropout pro
 
 params.add_argument('--x_sun',      default=[8.122, 0.0, 0.0208],  help='sun position [kpc] wrt galactic center', type=list)
 params.add_argument('--radius',     default=3.5,                   help='only keep stars within radius [kpc] of sun', type=float)
-params.add_argument('--num_stars',  default=None,                  help='total number of stars used for train/testing', type=float)
-params.add_argument('--num_gen',    default=100000,                 help='number of sampled stars from model', type=int)
+params.add_argument('--num_gen',    default=100000,                help='number of sampled stars from model', type=int)
+params.add_argument('--num_stars',  default=0,                     help='total number of stars used for train/testing', type=int)
+params.add_argument('--mean',       default=[],                    help='data mean (for preprocessing)', type=list)
+params.add_argument('--std',        default=[],                    help='data covariance (for preprocessing)', type=list)
+params.add_argument('--Rmax',       default=0.,                    help='maximum radius of smeared stars (for preprocessing)', type=float)
+
 
 #... pretrain params: define new parser for the pre-training model (only necesary if --pretrain=True):
 
@@ -97,7 +101,7 @@ params_pre = copy_parser(params,
                                         'batch_size' : {'default' : 512},
                                         'num_steps' : {'default' : False}, 
                                         'num_mc' : {'default' : 0},
-                                        'max_epochs' :  {'default' : 100},
+                                        'max_epochs' :  {'default' : 10},
                                         'max_patience' :  {'default' : 10} 
                                         } 
                         )
@@ -130,9 +134,11 @@ if __name__ == '__main__':
     #...store parser args
 
     args.num_stars = gaia.num_stars
+    args.mean = gaia.mean.tolist()
+    args.std = gaia.std.tolist()
+    args.Rmax = gaia.Rmax.tolist()
     print("INFO: num stars: {}".format(args.num_stars))
     save_arguments(args, name='inputs.json')
-
 
     #...define model
 
@@ -149,28 +155,33 @@ if __name__ == '__main__':
 
     if args.pretrain:
 
-        print("INFO: pretrain flow -> {}".format(args.pretrain))
+        print("INFO: start pre-training")
         args_pre = params_pre.parse_args()
         args_pre.workdir = args.workdir 
+        args_pre.num_stars = args.num_stars
+        args_pre.mean = args.mean
+        args_pre.std = args.std
+        args_pre.Rmax = args.Rmax 
         save_arguments(args_pre, name='input_pretrain.json')
 
         train_sample = DataLoader(dataset=torch.Tensor(train), batch_size=args_pre.batch_size, shuffle=True)
         test_sample  = DataLoader(dataset=torch.Tensor(test),  batch_size=args_pre.batch_size, shuffle=False)
 
-        Train_Model(flow, train_sample, test_sample, args_pre , show_plots=False, save_best_state=False)
+        Train_Model(flow, train_sample, test_sample, args_pre , show_plots=True, save_best_state=False)
 
         # sample from model and transform back to phase-space:
 
         sample = sampler(flow, num_samples=args.num_gen)
         gaia_sample = GaiaTransform(sample, torch.zeros(sample.shape), args) 
         gaia_sample.mean = gaia.mean
-        gaia_sample.std =  gaia.std
-        gaia_sample.preprocess(R=gaia.R, reverse=True)
-
+        gaia_sample.std = gaia.std
+        gaia_sample.preprocess(R=gaia.Rmax, reverse=True)
         gaia_sample.plot('x', title='pretrained position density', save_dir=args.workdir+'/results_plots') 
         gaia_sample.plot('v', title='pretrained velocity density', save_dir=args.workdir+'/results_plots') 
 
     #... apply deconvolution on pretrained flow model
+
+    print("INFO: start deconvolution")
 
     train_sample = DataLoader(dataset=torch.Tensor(train), batch_size=args.batch_size, shuffle=True)
     test_sample  = DataLoader(dataset=torch.Tensor(test),  batch_size=args.batch_size, shuffle=False)
@@ -183,8 +194,7 @@ if __name__ == '__main__':
     gaia_sample_deconv = GaiaTransform(sample, torch.zeros(sample.shape), args) 
     gaia_sample_deconv.mean = gaia.mean
     gaia_sample_deconv.std =  gaia.std
-    gaia_sample_deconv.preprocess(R=gaia.R, reverse=True)
-
+    gaia_sample_deconv.preprocess(R=gaia.Rmax, reverse=True)
     gaia_sample_deconv.plot('x', title='deconvoluted position density', save_dir=args.workdir+'/results_plots') 
     gaia_sample_deconv.plot('v', title='deconvoluted velocity density', save_dir=args.workdir+'/results_plots') 
 

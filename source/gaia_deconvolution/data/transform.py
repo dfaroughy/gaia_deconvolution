@@ -19,7 +19,7 @@ class GaiaTransform:
         self.data = torch.cat((data, covs), dim=1)        
         self.mean = torch.zeros(6)
         self.std = torch.zeros(6)
-        self.R = None
+        self.Rmax = None
 
     @property
     def x(self):
@@ -55,15 +55,15 @@ class GaiaTransform:
     def to_unit_ball(self, R=None, inverse=False, verbose=True): 
         x0 = torch.tensor(self.args.x_sun)
         if R:
-            self.R = R
+            self.Rmax = R
         else:
             dist = torch.norm(self.data[:,:3] - x0, dim=-1)
-            self.R = torch.max(dist) * (1+1e-6)
+            self.Rmax = torch.max(dist) * (1+1e-6)
         if verbose: print('INFO: centering and scaling to unit ball at origin, scale={}'.format(R))
         if inverse: 
-            self.data[:,:3] = (self.x * self.R ) + x0 
+            self.data[:,:3] = (self.x * self.Rmax ) + x0 
         else:  
-            self.data[:,:3] = (self.x - x0) / self.R
+            self.data[:,:3] = (self.x - x0) / self.Rmax
         return self
 
     def radial_blowup_transform(self, inverse=False, verbose=True):
@@ -93,10 +93,10 @@ class GaiaTransform:
         if verbose: print('INFO: preprocessing data')
         x0 = torch.tensor(self.args.x_sun)
         if R:
-            self.R = R
+            self.Rmax = R
         else:
             dist = torch.norm(self.data[:,:3] - x0, dim=-1)
-            self.R = torch.max(dist) * (1+1e-6)
+            self.Rmax = torch.max(dist) * (1+1e-6)
         if reverse: 
             self.standardization(inverse=True, verbose=False)
             self.radial_blowup_transform(inverse=True, verbose=False)
