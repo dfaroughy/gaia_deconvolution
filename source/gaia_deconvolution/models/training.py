@@ -60,7 +60,7 @@ class Train_Epoch(nn.Module):
         self.model.train()
         self.loss = 0
 
-        for batch in tqdm(data, desc="batch"):
+        for batch in tqdm(data, desc=" batch"):
 
             if self.args.num_steps <= 1: 
                 current_loss = calculate_loss(self.model, batch, self.args)
@@ -75,7 +75,7 @@ class Train_Epoch(nn.Module):
 
                 sub_batches = torch.tensor_split(batch, self.args.num_steps)
                 sub_batch_loss = 0
-                for sub_batch in sub_batches:
+                for sub_batch in tqdm(sub_batches, desc="  sub-batch"):
                     current_loss = calculate_loss(self.model, sub_batch, self.args, reduction=torch.sum)
                     current_loss.backward()
                     sub_batch_loss += current_loss.item() / self.args.batch_size
