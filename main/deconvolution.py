@@ -85,7 +85,7 @@ params.add_argument('--dropout',         default=0.1,          help='dropout pro
 
 params.add_argument('--x_sun',      default=[8.122, 0.0, 0.0208],  help='sun position [kpc] wrt galactic center', type=list)
 params.add_argument('--radius',     default=1.5,                   help='only keep stars within radius [kpc] of sun', type=float)
-params.add_argument('--num_gen',    default=100000,                help='number of sampled stars from model', type=int)
+params.add_argument('--num_gen',    default=5000,                help='number of sampled stars from model', type=int)
 params.add_argument('--num_stars',  default=0,                     help='total number of stars used for train/testing', type=int)
 params.add_argument('--mean',       default=[],                    help='data mean (for preprocessing)', type=list)
 params.add_argument('--std',        default=[],                    help='data covariance (for preprocessing)', type=list)
@@ -105,7 +105,7 @@ params_pre = copy_parser(params,
                                         'batch_size' : {'default' : 512},
                                         'num_steps' : {'default' : False}, 
                                         'num_mc' : {'default' : 0},
-                                        'max_epochs' :  {'default' : 10},
+                                        'max_epochs' :  {'default' : 2},
                                         'max_patience' :  {'default' : 10} 
                                         } 
                         )
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     if args.flow == 'MAF': flow = masked_autoregressive_flow(args)
     elif args.flow == 'coupling': flow = coupling_flow(args)
 
-    flow = flow.to(args.device)
+    model = GaiaModel(flow.to(args.device))
 
     #...prepare train/test samples
 
@@ -176,18 +176,17 @@ if __name__ == '__main__':
         train_sample = DataLoader(dataset=torch.Tensor(train), batch_size=args_pre.batch_size, shuffle=True)
         test_sample  = DataLoader(dataset=torch.Tensor(test),  batch_size=args_pre.batch_size, shuffle=False)
 
-        pretrain_model = GaiaModel(flow, args_pre)
-        pretrain_model.train(train_sample, test_sample, show_plots=False, save_best_state=False)
+        model.train(train_sample, test_sample, args_pre, show_plots=False, save_best_state=False)
 
         # sample from model and transform back to phase-space:
 
-        sample = pretrain_model.sample(num_samples=args.num_gen)
-        gaia_sample = GaiaTransform(sample, torch.zeros(sample.shape), args) 
+        sample = model.sample(num_samples=args.num_gen)
+        gaia_sample = GaiaTransform(sample, torch.zeros(sample.shape), args_pre) 
         gaia_sample.mean = gaia.mean
         gaia_sample.std = gaia.std
         gaia_sample.preprocess(R=gaia.Rmax, reverse=True)
         gaia_sample.plot('x', title='pretrained position density', save_dir=args.workdir+'/results_plots', xlim=xlim, ylim=ylim, bin_size=0.05) 
-        gaia_sample.plot('v', title='pretrained velocity density', save_dir=args.workdir+'/results_plots') 
+        # gaia_sample.plot('v', title='pretrained velocity density', save_dir=args.workdir+'/results_plots') 
 
     #... apply deconvolution on pretrained flow model
 
@@ -197,15 +196,16 @@ if __name__ == '__main__':
     test_sample  = DataLoader(dataset=torch.Tensor(test),  batch_size=args.batch_size, shuffle=False)
 
     # Train_Model(flow, train_sample, test_sample, args)
-    model = GaiaModel(flow, args_pre)
-    model.train(train_sample, test_sample, show_plots=False, save_best_state=False)
+
+    model.train(train_sample, test_sample, args)
+
     # sample from deconvoluted model and transform back to phase-space:
 
-    sample = sampler(flow, num_samples=args.num_gen)
+    sample = model.sample(num_samples=args.num_gen)
     gaia_sample_deconv = GaiaTransform(sample, torch.zeros(sample.shape), args) 
     gaia_sample_deconv.mean = gaia.mean
     gaia_sample_deconv.std =  gaia.std
     gaia_sample_deconv.preprocess(R=gaia.Rmax, reverse=True)
     gaia_sample_deconv.plot('x', title='deconvoluted position density', save_dir=args.workdir+'/results_plots', xlim=xlim, ylim=ylim, bin_size=0.05) 
-    gaia_sample_deconv.plot('v', title='deconvoluted velocity density', save_dir=args.workdir+'/results_plots') 
+    # gaia_sample_deconv.plot('v', title='deconvoluted velocity density', save_dir=args.workdir+'/results_plots') 
 

@@ -52,7 +52,7 @@ def masked_autoregressive_flow(args,
     base_dist = nflows.distributions.normal.StandardNormal(shape=[dim])
     model = nflows.flows.base.Flow(transform, base_dist)
     if save_architecture:
-        with open(args.workdir+'/model_architecture.txt', 'w') as file: file.write('model = {}\n'.format(model))
+        with open(args.workdir+'/model_architecture.txt', 'a') as file: file.write('model = {}\n'.format(model))
     return model
 
 
