@@ -11,7 +11,7 @@ import json
 
 from gaia_deconvolution.utils.base import make_dir, copy_parser, save_arguments
 from gaia_deconvolution.models.flows.norm_flows import masked_autoregressive_flow, coupling_flow
-from gaia_deconvolution.models.training import Train_Model, sampler
+from gaia_deconvolution.models.training import GaiaModel
 from gaia_deconvolution.models.loss import neglogprob_loss, deconv_loss
 from gaia_deconvolution.data.transform import GaiaTransform
 
@@ -49,9 +49,9 @@ torch.set_default_dtype(torch.float64)
 params = argparse.ArgumentParser(description='arguments for the deconvolution model')
 
 params.add_argument('--workdir',      help='working directory', type=str)
-params.add_argument('--device',       default='cuda:1',         help='where to train')
+params.add_argument('--device',       default='cuda:0',         help='where to train')
 params.add_argument('--dim',          default=6,                help='dimensionalaty of data: (x,y,z,vx,vy,vz)', type=int)
-params.add_argument('--num_mc',       default=2500,             help='number of MC samples for integration', type=int)
+params.add_argument('--num_mc',       default=200,             help='number of MC samples for integration', type=int)
 params.add_argument('--loss',         default=deconv_loss,      help='loss function')
 params.add_argument('--pretrain',     default=True,             help='if True, pretrain the flow on the noisy data before deconvoling', type=bool)
 
@@ -62,7 +62,7 @@ params.add_argument('--dim_flow',     default=6,            help='dimensionalaty
 params.add_argument('--flow_func',    default='RQSpline',   help='type of flow transformation: affine or RQSpline', type=str)
 params.add_argument('--coupl_mask',   default='mid-split',  help='mask type [only for coupling flows]: mid-split or checkers', type=str)
 params.add_argument('--permutation',  default='inverse',    help='type of fixed permutation between flows: n-cycle or inverse', type=str)
-params.add_argument('--num_flows',    default=32,            help='num of flow layers', type=int)
+params.add_argument('--num_flows',    default=10,            help='num of flow layers', type=int)
 params.add_argument('--dim_hidden',   default=128,          help='dimension of hidden layers', type=int)
 params.add_argument('--num_spline',   default=30,           help='num of spline for rational_quadratic', type=int)
 params.add_argument('--num_blocks',   default=2,            help='num of MADE blocks in flow', type=int)
@@ -70,11 +70,11 @@ params.add_argument('--dim_context',  default=None,         help='dimension of c
 
 #...training params:
 
-params.add_argument('--batch_size',      default=2000,         help='size of training/testing batch', type=int)
-params.add_argument('--num_steps',       default=1000,         help='split batch into n_steps sub-batches + gradient accumulation', type=int)
+params.add_argument('--batch_size',      default=512,         help='size of training/testing batch', type=int)
+params.add_argument('--num_steps',       default=10,         help='split batch into n_steps sub-batches + gradient accumulation', type=int)
 params.add_argument('--test_size',       default=0.2,          help='fraction of testing data', type=float)
 params.add_argument('--seed',            default=9999,         help='random seed', type=int)
-params.add_argument('--max_epochs',      default=10,           help='max num of training epochs', type=int)
+params.add_argument('--max_epochs',      default=100,           help='max num of training epochs', type=int)
 params.add_argument('--max_patience',    default=10,           help='terminate if test loss is not changing', type=int)
 params.add_argument('--lr',              default=1e-4,         help='learning rate of generator optimizer', type=float)
 params.add_argument('--activation',      default=F.leaky_relu, help='activation function for neural networks')
@@ -84,12 +84,16 @@ params.add_argument('--dropout',         default=0.1,          help='dropout pro
 #... data params:
 
 params.add_argument('--x_sun',      default=[8.122, 0.0, 0.0208],  help='sun position [kpc] wrt galactic center', type=list)
-params.add_argument('--radius',     default=3.5,                   help='only keep stars within radius [kpc] of sun', type=float)
+params.add_argument('--radius',     default=1.5,                   help='only keep stars within radius [kpc] of sun', type=float)
 params.add_argument('--num_gen',    default=100000,                help='number of sampled stars from model', type=int)
 params.add_argument('--num_stars',  default=0,                     help='total number of stars used for train/testing', type=int)
 params.add_argument('--mean',       default=[],                    help='data mean (for preprocessing)', type=list)
 params.add_argument('--std',        default=[],                    help='data covariance (for preprocessing)', type=list)
 params.add_argument('--Rmax',       default=0.,                    help='maximum radius of smeared stars (for preprocessing)', type=float)
+
+
+xlim = ((6,10),(-2,2),(-2,2))
+ylim = ((-2,2),(-2,2),(6,10))
 
 
 #... pretrain params: define new parser for the pre-training model (only necesary if --pretrain=True):
@@ -121,14 +125,19 @@ if __name__ == '__main__':
     #...get datasets
 
     data_file =  "./data/data.angle_340.smeared_00.npy"
-    covs_file=  "./data/data.angle_340.smeared_00.cov.npy"
+    covs_file =  "./data/data.angle_340.smeared_00.cov.npy"
     data = torch.tensor(np.load(data_file))
     covs = torch.squeeze(torch.reshape( torch.tensor(np.load(covs_file)), (-1, 1, 6*6)))
     
     #...smear and preprocess data
 
     gaia = GaiaTransform(data, covs, args)
+    gaia.get_stars_near_sun(R=args.radius)
+    # gaia.plot('x', title='target positions', save_dir=args.workdir+'/data_plots', xlim=xlim, ylim=ylim, bin_size=0.05) 
+    # gaia.plot('v', title='target velocities', save_dir=args.workdir+'/data_plots') 
     gaia.smear()
+    # gaia.plot('x', title='smeared positions', save_dir=args.workdir+'/data_plots', xlim=xlim, ylim=ylim) 
+    # gaia.plot('v', title='smeard velocities', save_dir=args.workdir+'/data_plots') 
     gaia.preprocess()                        
 
     #...store parser args
@@ -167,16 +176,17 @@ if __name__ == '__main__':
         train_sample = DataLoader(dataset=torch.Tensor(train), batch_size=args_pre.batch_size, shuffle=True)
         test_sample  = DataLoader(dataset=torch.Tensor(test),  batch_size=args_pre.batch_size, shuffle=False)
 
-        Train_Model(flow, train_sample, test_sample, args_pre , show_plots=True, save_best_state=False)
+        pretrain_model = GaiaModel(flow, args_pre)
+        pretrain_model.train(train_sample, test_sample, show_plots=False, save_best_state=False)
 
         # sample from model and transform back to phase-space:
 
-        sample = sampler(flow, num_samples=args.num_gen)
+        sample = pretrain_model.sample(num_samples=args.num_gen)
         gaia_sample = GaiaTransform(sample, torch.zeros(sample.shape), args) 
         gaia_sample.mean = gaia.mean
         gaia_sample.std = gaia.std
         gaia_sample.preprocess(R=gaia.Rmax, reverse=True)
-        gaia_sample.plot('x', title='pretrained position density', save_dir=args.workdir+'/results_plots') 
+        gaia_sample.plot('x', title='pretrained position density', save_dir=args.workdir+'/results_plots', xlim=xlim, ylim=ylim, bin_size=0.05) 
         gaia_sample.plot('v', title='pretrained velocity density', save_dir=args.workdir+'/results_plots') 
 
     #... apply deconvolution on pretrained flow model
@@ -186,8 +196,9 @@ if __name__ == '__main__':
     train_sample = DataLoader(dataset=torch.Tensor(train), batch_size=args.batch_size, shuffle=True)
     test_sample  = DataLoader(dataset=torch.Tensor(test),  batch_size=args.batch_size, shuffle=False)
 
-    Train_Model(flow, train_sample, test_sample, args, show_plots=True, save_best_state=True)
-    
+    # Train_Model(flow, train_sample, test_sample, args)
+    model = GaiaModel(flow, args_pre)
+    model.train(train_sample, test_sample, show_plots=False, save_best_state=False)
     # sample from deconvoluted model and transform back to phase-space:
 
     sample = sampler(flow, num_samples=args.num_gen)
@@ -195,6 +206,6 @@ if __name__ == '__main__':
     gaia_sample_deconv.mean = gaia.mean
     gaia_sample_deconv.std =  gaia.std
     gaia_sample_deconv.preprocess(R=gaia.Rmax, reverse=True)
-    gaia_sample_deconv.plot('x', title='deconvoluted position density', save_dir=args.workdir+'/results_plots') 
+    gaia_sample_deconv.plot('x', title='deconvoluted position density', save_dir=args.workdir+'/results_plots', xlim=xlim, ylim=ylim, bin_size=0.05) 
     gaia_sample_deconv.plot('v', title='deconvoluted velocity density', save_dir=args.workdir+'/results_plots') 
 

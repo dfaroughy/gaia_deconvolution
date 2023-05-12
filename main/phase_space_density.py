@@ -72,8 +72,12 @@ params.add_argument('--dropout',       default=0.1,          help='dropout proba
 params.add_argument('--data',       default='noisy',               help='noisy or truth data', type=str)
 params.add_argument('--x_sun',      default=[8.122, 0.0, 0.0208],  help='sun position [kpc] wrt galactic center', type=list)
 params.add_argument('--radius',     default=3.5,                   help='only keep stars within radius [kpc] of sun', type=float)
-params.add_argument('--num_stars',  default=None,                  help='total number of stars used for train/testing', type=float)
 params.add_argument('--num_gen',    default=100000,                help='number of sampled stars from model', type=int)
+params.add_argument('--num_stars',  default=0,                     help='total number of stars used for train/testing', type=int)
+params.add_argument('--mean',       default=[],                    help='data mean (for preprocessing)', type=list)
+params.add_argument('--std',        default=[],                    help='data covariance (for preprocessing)', type=list)
+params.add_argument('--Rmax',       default=0.,                    help='maximum radius of smeared stars (for preprocessing)', type=float)
+
 
 ####################################################################################################################
 
@@ -97,6 +101,7 @@ if __name__ == '__main__':
     #...smear and preprocess data
 
     gaia = GaiaTransform(data, covs, args)
+    gaia.get_stars_near_sun(self, R=args.radius)
 
     if args.data == 'noisy': gaia.smear()
 
@@ -108,6 +113,9 @@ if __name__ == '__main__':
     #...store parser arguments
 
     args.num_stars = gaia.num_stars
+    args.mean = gaia.mean.tolist()
+    args.std = gaia.std.tolist()
+    args.Rmax = gaia.Rmax.tolist()
     print("INFO: num stars: {}".format(args.num_stars))
     save_arguments(args, name='inputs.json')
 
@@ -135,10 +143,9 @@ if __name__ == '__main__':
     #...transofrm back to phase-space amd plot
 
     gaia_sample = GaiaTransform(sample, torch.zeros(sample.shape), args) 
-
     gaia_sample.mean = gaia.mean
     gaia_sample.std =  gaia.std
-    gaia_sample.preprocess(R=gaia.R, reverse=True) # invert preprocess transformations
+    gaia_sample.preprocess(R=gaia.Rmax, reverse=True) # invert preprocess transformations
     gaia_sample.plot('x', title='position density', save_dir=args.workdir+'/results_plots') 
     gaia_sample.plot('v', title='velocity density', save_dir=args.workdir+'/results_plots') 
 
