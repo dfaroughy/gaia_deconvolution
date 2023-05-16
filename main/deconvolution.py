@@ -46,7 +46,7 @@ torch.set_default_dtype(torch.float64)
 
 ####################################################################################################################
 
-params = argparse.ArgumentParser(description='arguments for the deconvolution model')
+params = argparse.ArgumentParser(description='arguments for the deconvolution model for p(w) -> p(v)')
 
 params.add_argument('--workdir',      help='working directory', type=str)
 params.add_argument('--device',       default='cuda:0',         help='where to train')
@@ -99,7 +99,7 @@ ylim = ((-2,2),(-2,2),(6,10))
 #... pretrain params: define new parser for the pre-training model (only necesary if --pretrain=True):
 
 params_pre = copy_parser(params, 
-                         description='arguments for the pre-trining model: this flow learns the noisy data distribution before the deconvoling step',
+                         description='arguments for the pre-trining model: flow learns the noisy distribution p(w)',
                          modifications={
                                         'loss' : {'default' : neglogprob_loss}, 
                                         'batch_size' : {'default' : 512},
@@ -153,8 +153,8 @@ if __name__ == '__main__':
 
     if args.flow == 'MAF': flow = masked_autoregressive_flow(args)
     elif args.flow == 'coupling': flow = coupling_flow(args)
-
-    model = GaiaModel(flow.to(args.device))
+    flow = flow.to(args.device)    
+    model = GaiaModel(flow)
 
     #...prepare train/test samples
 
@@ -191,11 +191,8 @@ if __name__ == '__main__':
     #... apply deconvolution on pretrained flow model
 
     print("INFO: start deconvolution")
-
     train_sample = DataLoader(dataset=torch.Tensor(train), batch_size=args.batch_size, shuffle=True)
     test_sample  = DataLoader(dataset=torch.Tensor(test),  batch_size=args.batch_size, shuffle=False)
-
-    # Train_Model(flow, train_sample, test_sample, args)
 
     model.train(train_sample, test_sample, args)
 
