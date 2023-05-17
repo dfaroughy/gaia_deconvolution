@@ -73,13 +73,13 @@ params.add_argument('--dim_context',  default=None,         help='dimension of c
 params.add_argument('--batch_size',      default=512,         help='size of training/testing batch', type=int)
 params.add_argument('--num_steps',       default=10,         help='split batch into n_steps sub-batches + gradient accumulation', type=int)
 params.add_argument('--test_size',       default=0.2,          help='fraction of testing data', type=float)
-params.add_argument('--seed',            default=9999,         help='random seed', type=int)
 params.add_argument('--max_epochs',      default=100,           help='max num of training epochs', type=int)
 params.add_argument('--max_patience',    default=10,           help='terminate if test loss is not changing', type=int)
 params.add_argument('--lr',              default=1e-4,         help='learning rate of generator optimizer', type=float)
 params.add_argument('--activation',      default=F.leaky_relu, help='activation function for neural networks')
 params.add_argument('--batch_norm',      default=True,         help='apply batch normalization layer to flow blocks', type=bool)
 params.add_argument('--dropout',         default=0.1,          help='dropout probability', type=float)
+params.add_argument('--seed',            default=9999,          help='random seed for data split', type=int)
 
 #... data params:
 
@@ -133,11 +133,9 @@ if __name__ == '__main__':
 
     gaia = GaiaTransform(data, covs, args)
     gaia.get_stars_near_sun(R=args.radius)
-    # gaia.plot('x', title='target positions', save_dir=args.workdir+'/data_plots', xlim=xlim, ylim=ylim, bin_size=0.05) 
-    # gaia.plot('v', title='target velocities', save_dir=args.workdir+'/data_plots') 
+    gaia.plot('x', title='target positions', save_dir=args.workdir+'/data_plots', xlim=xlim, ylim=ylim, bin_size=0.05) 
+    gaia.plot('v', title='target velocities', save_dir=args.workdir+'/data_plots') 
     gaia.smear()
-    # gaia.plot('x', title='smeared positions', save_dir=args.workdir+'/data_plots', xlim=xlim, ylim=ylim) 
-    # gaia.plot('v', title='smeard velocities', save_dir=args.workdir+'/data_plots') 
     gaia.preprocess()                        
 
     #...store parser args
@@ -186,7 +184,7 @@ if __name__ == '__main__':
         gaia_sample.std = gaia.std
         gaia_sample.preprocess(R=gaia.Rmax, reverse=True)
         gaia_sample.plot('x', title='pretrained position density', save_dir=args.workdir+'/results_plots', xlim=xlim, ylim=ylim, bin_size=0.05) 
-        # gaia_sample.plot('v', title='pretrained velocity density', save_dir=args.workdir+'/results_plots') 
+        gaia_sample.plot('v', title='pretrained velocity density', save_dir=args.workdir+'/results_plots') 
 
     #... apply deconvolution on pretrained flow model
 
@@ -204,5 +202,5 @@ if __name__ == '__main__':
     gaia_sample_deconv.std =  gaia.std
     gaia_sample_deconv.preprocess(R=gaia.Rmax, reverse=True)
     gaia_sample_deconv.plot('x', title='deconvoluted position density', save_dir=args.workdir+'/results_plots', xlim=xlim, ylim=ylim, bin_size=0.05) 
-    # gaia_sample_deconv.plot('v', title='deconvoluted velocity density', save_dir=args.workdir+'/results_plots') 
+    gaia_sample_deconv.plot('v', title='deconvoluted velocity density', save_dir=args.workdir+'/results_plots') 
 
