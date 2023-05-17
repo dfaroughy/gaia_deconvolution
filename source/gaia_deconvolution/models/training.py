@@ -25,10 +25,8 @@ class GaiaModel:
             train.fit(training_sample, optimizer)       
             test.validate(validation_sample)
             scheduler.step() 
-            print("\t Epoch: {}".format(epoch))
-            print("\t Training loss: {}".format(train.loss))
-            print("\t Test loss: {}  (min: {})".format(test.loss, test.loss_min))
-            if test.check_patience(show_plots=show_plots, save_best_state=save_best_state): break
+            if test.check_patience(show_plots=show_plots, save_best_state=save_best_state): 
+                break
         plot_loss(train, test, args)
         torch.cuda.empty_cache()
         return test.best_model
@@ -44,37 +42,6 @@ class GaiaModel:
                 samples.append(batch_samples)
             samples = torch.cat(samples, dim=0)
         return samples.cpu().detach()
-
-
-# def Train_Model(model, training_sample, validation_sample, args, show_plots=True, save_best_state=True):        
-#     train = Train_Epoch(model, args)
-#     test = Evaluate_Epoch(model, args)
-#     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)  
-#     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.max_epochs)
-#     print('INFO: number of training parameters: {}'.format(sum(p.numel() for p in model.parameters())))
-#     for epoch in tqdm(range(args.max_epochs), desc="epochs"):
-#         train.fit(training_sample, optimizer)       
-#         test.validate(validation_sample)
-#         scheduler.step() 
-#         print("\t Epoch: {}".format(epoch))
-#         print("\t Training loss: {}".format(train.loss))
-#         print("\t Test loss: {}  (min: {})".format(test.loss, test.loss_min))
-#         if test.check_patience(show_plots=show_plots, save_best_state=save_best_state): break
-#     plot_loss(train, test, args)
-#     torch.cuda.empty_cache()
-#     return test.best_model
-
-# def sampler(model, num_samples, batch_size=10000):
-#     model.eval()
-#     with torch.no_grad(): 
-#         num_batches = num_samples // batch_size + (1 if num_samples % batch_size != 0 else 0)
-#         samples=[]
-#         for i in range(num_batches):
-#             current_batch_size = min(batch_size, num_samples - i * batch_size)
-#             batch_samples = model.sample(num_samples=current_batch_size)
-#             samples.append(batch_samples)
-#         samples = torch.cat(samples, dim=0)
-#     return samples.cpu().detach()
 
 
 class Train_Epoch(nn.Module):
@@ -108,6 +75,7 @@ class Train_Epoch(nn.Module):
                 optimizer.zero_grad()
                 self.loss += sub_batch_loss / len(data) 
         self.loss_per_epoch.append(self.loss)
+        print("\t Training loss: {}".format(self.loss))
 
 
 class Evaluate_Epoch(nn.Module):
@@ -161,4 +129,5 @@ class Evaluate_Epoch(nn.Module):
                 torch.save(self.best_model.state_dict(), self.args.workdir + '/best_model.pth')       
         else: self.patience += 1
         if self.patience >= self.args.max_patience: self.terminate = True
+        print("\t Test loss: {}  (min: {})".format(self.loss, self.loss_min))
         return self.terminate
