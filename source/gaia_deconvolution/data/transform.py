@@ -140,5 +140,7 @@ class GaiaTransform:
                                     title=title, 
                                     save_dir=save_dir)
 
-
+    def to_device(self):
+        self.data = self.data.to(self.args.device)
+        return self
     

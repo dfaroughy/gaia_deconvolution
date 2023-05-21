@@ -16,8 +16,8 @@ class GaiaModel:
         self.model = models
 
     def train(self, training_sample, validation_sample, args, show_plots=True, save_best_state=True):        
-        train = Train_Epoch(self.model, args)
-        test = Evaluate_Epoch(self.model, args)
+        train = Train_Step(self.model, args)
+        test = Test_Step(self.model, args)
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=args.lr)  
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.max_epochs)
         print('INFO: number of training parameters: {}'.format(sum(p.numel() for p in self.model.parameters())))
@@ -31,23 +31,23 @@ class GaiaModel:
         torch.cuda.empty_cache()
         return test.best_model
 
+    @torch.no_grad()
     def sample(self, num_samples, batch_size=10000):
         self.model.eval()
-        with torch.no_grad(): 
-            num_batches = num_samples // batch_size + (1 if num_samples % batch_size != 0 else 0)
-            samples=[]
-            for i in range(num_batches):
-                current_batch_size = min(batch_size, num_samples - i * batch_size)
-                batch_samples = self.model.sample(num_samples=current_batch_size)
-                samples.append(batch_samples)
-            samples = torch.cat(samples, dim=0)
+        num_batches = num_samples // batch_size + (1 if num_samples % batch_size != 0 else 0)
+        samples=[]
+        for i in range(num_batches):
+            current_batch_size = min(batch_size, num_samples - i * batch_size)
+            batch_samples = self.model.sample(num_samples=current_batch_size)
+            samples.append(batch_samples)
+        samples = torch.cat(samples, dim=0)
         return samples.cpu().detach()
 
 
-class Train_Epoch(nn.Module):
+class Train_Step(nn.Module):
 
     def __init__(self, model, args):
-        super(Train_Epoch, self).__init__()
+        super(Train_Step, self).__init__()
         self.model = model
         self.loss = 0
         self.loss_per_epoch = []
@@ -78,10 +78,10 @@ class Train_Epoch(nn.Module):
         print("\t Training loss: {}".format(self.loss))
 
 
-class Evaluate_Epoch(nn.Module):
+class Test_Step(nn.Module):
 
     def __init__(self, model, args):
-        super(Evaluate_Epoch, self).__init__()
+        super(Test_Step, self).__init__()
         self.model = model
         self.loss = 0
         self.loss_per_epoch = []
@@ -92,6 +92,7 @@ class Evaluate_Epoch(nn.Module):
         self.terminate = False
         self.args = args
 
+    @torch.no_grad()
     def validate(self, data):
         self.model.eval()
         self.loss = 0
@@ -109,9 +110,9 @@ class Evaluate_Epoch(nn.Module):
                 self.loss += sub_batch_loss / len(data)
         self.loss_per_epoch.append(self.loss)
 
+    @torch.no_grad()
     def check_patience(self, show_plots=True, save_best_state=True):
         self.model.eval()
-        
         if self.loss < self.loss_min:
             self.loss_min = self.loss
             self.patience = 0
